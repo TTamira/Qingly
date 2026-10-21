@@ -1,0 +1,13 @@
+# 依赖
+node_modules/
+
+# 构建产物
+dist/
+web/
+src-tauri/target/
+
+# Tauri 生成
+src-tauri/gen/schemas/
+
+# 本地备份
+*.bak_*

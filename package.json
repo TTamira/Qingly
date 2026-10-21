@@ -1,0 +1,13 @@
+{
+  "name": "qingxu",
+  "private": true,
+  "version": "0.2.0",
+  "scripts": {
+    "sync:web": "node scripts/sync-web.js",
+    "dev": "tauri dev",
+    "build": "tauri build"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  }
+}
