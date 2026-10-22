@@ -680,28 +680,20 @@
   .cal-grid { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:2px; }
   .home-stack > .tile.cal-tile { padding-top:11px; padding-bottom:8px; }
   .home-stack > .tile.cal-tile .tile-h { margin-bottom:6px; }
-  /* 格子：普通格用主题浅色底、小圆角、紧凑间距，连成完整月历；有排期才着整格排期色 */
+  /* 格子：普通格用主题浅色底、小圆角、紧凑间距；排期改用格内色条，不再整格染色 */
   .cal-cell { position:relative; min-height:42px; border-radius:4px; background:var(--surface-nested); border:1px solid transparent;
     padding:5px 6px; overflow:hidden; }
-  /* 日期数字：统一直接显示，不套任何底牌方框；浅色排期底上深色数字对比度满足 AA，今天/选中用 accent 区分 */
+  /* 日期数字统一直接显示，不套底牌方框；今天/选中用 accent 区分 */
   .cal-cell .cnb { position:absolute; top:4px; left:6px; display:grid; place-items:center; min-width:19px; height:16px; border-radius:3px; z-index:2; }
   .cal-cell .cnb .cn { font-size:11px; font-weight:700; color:var(--text); font-variant-numeric:tabular-nums; line-height:1; padding:0 3px; }
-  .cal-cell.sched .cnb { background:transparent; }
   .cal-cell.out { background:transparent; }
   .cal-cell.out .cnb .cn { color:var(--text-tertiary); opacity:.7; }
   .cal-cell.out .cnb { background:transparent; }
-  .cal-cell.out.sched { background:transparent; }
-  .cal-cell.out.sched::before { display:none; }
-  /* 排期整格底色 + 顶部 4px 色条（分组色淡化混入，色相差小兜底靠它） */
-  .cal-cell.sched { background: var(--sgrp, var(--surface-nested)); }
-  .cal-cell.sched::before { content:""; position:absolute; top:0; left:0; right:0; height:4px;
-    border-radius:4px 4px 0 0; background: var(--sbar, transparent); z-index:1; }
-  /* 今天：accent 边框 + 数字 accent 加粗；选中：内描边轮廓 + accent 数字，不覆盖排期底色，三者可同时共存 */
+  /* 今天：accent 边框 + 数字 accent 加粗；选中：内描边轮廓 + accent 数字，不覆盖任何内容 */
   .cal-cell.today .cnb .cn { font-weight:800; color:var(--accent); }
   .cal-cell.today { border-color: var(--accent); }
   .cal-cell.selected { outline:2px solid var(--accent); outline-offset:-2px; }
   .cal-cell.selected .cnb .cn { color:var(--accent); }
-  .cal-cell.sched.selected { outline:2px solid var(--accent); outline-offset:-2px; }
   .cal-cell .cflag { position:absolute; top:4px; right:5px; font-size:9px; line-height:1; font-weight:800; padding:2.5px 4px; border-radius:5px; }
   .cal-cell .cflag.off { color:var(--danger); background:var(--danger-muted); }
   .cal-cell .cflag.work { color:var(--module-2); background:color-mix(in srgb, var(--module-2) 14%, transparent); }
@@ -712,6 +704,13 @@
     font-size:10px; line-height:14px; font-weight:600; color:var(--text); border-radius:0; padding:0 2px; }
   .cal-cell .cevt.more { color:var(--text-tertiary); background:transparent; font-weight:700; }
   .cal-cell .cevt.done { text-decoration:line-through; color:var(--text-secondary); }
+  /* 排期：一条排期一根通栏色条 + 标题，颜色按分类从主题色取，同分类多条用深浅区分 */
+  .cal-cell .csch { display:flex; flex-direction:column; gap:0; overflow:hidden; }
+  .cal-cell .csch-bar { display:block; height:3px; border-radius:2px; }
+  .cal-cell .csch-t { display:block; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;
+    font-size:10px; line-height:11px; font-weight:600; color:var(--text); }
+  .cal-cell .cmore { position:absolute; right:4px; bottom:3px; z-index:2; font-size:9.5px; font-weight:700;
+    color:var(--text-tertiary); background:var(--surface-card); padding:0 3px; border-radius:3px; }
   /* 日期回看弹层 */
   .dpop-dow { font-size:12px; font-weight:600; color:var(--text-tertiary); }
   .dpop-flag { font-size:11px; font-weight:800; padding:3px 8px; border-radius:999px; }
@@ -929,6 +928,11 @@
   .gtask-add { display:inline-flex; align-items:center; gap:5px; font-size:12.5px; font-weight:600; color:var(--text-secondary);
     background:none; border:none; cursor:pointer; padding:7px 8px; border-radius:8px; margin-top:2px; transition:all .14s; }
   .gtask-add:hover { color:var(--accent); background:var(--surface-nested); }
+  .gtasks { border-left:1px solid var(--border); padding-left:10px; margin:3px 0 6px; display:flex; flex-direction:column; gap:2px; }
+  .gtasks-sum { align-self:flex-start; border:none; background:transparent; color:var(--text-tertiary); font-size:12px;
+    font-weight:600; cursor:pointer; padding:3px 6px; border-radius:6px; transition:color .14s, background .14s; }
+  .gtasks-sum:hover { color:var(--accent); background:var(--surface-nested); }
+  .gtnum { font-size:11.5px; color:var(--text-tertiary); white-space:nowrap; }
 
   /* ---------- 方向推进（首页块：每条方向最近在不在往前走） ---------- */
   .mom-list { display:flex; flex-direction:column; gap:8px; }
@@ -1097,7 +1101,7 @@ const CONFIG = {
       seed:[] },
 
     { key:"goal", name:"目标拆解", icon:"target", tint:"#edf1f5", color:"var(--module-2)", type:"goal",
-      desc:"方向 → 总目标 → 阶段 → 周 → 每日任务 · 进度自下而上自动汇总",
+      desc:"方向 / 目标 / 任务 · 层级可深可浅，任务挂哪层都能推进进度",
       seed:[
         { id:1001, lv:"direction", title:"💼 职业", stage:"寻找稳定的测试岗位", week:"完善项目经历", children:[
           { id:1002, lv:"goal", title:"成为更强的测试工程师", deadline:"长期", children:[
@@ -1390,18 +1394,26 @@ function migrateGoal(){
 }
 migrateGoal();
 
-/* 某个周目标下面挂着的「每日任务」= 今日计划里关联过来的任务 */
-function weekTasks(node){ return (data.todo||[]).filter(x=>x.goalId==node.id); }
-/* 单节点进度：周目标=每日任务完成率；上层=子项平均 */
+/* 某个节点下面挂着的「每日任务」= 今日计划里关联过来的任务（任意层级都可以挂） */
+function tasksOf(node){ return (data.todo||[]).filter(x=>String(x.goalId)===String(node.id)); }
+const weekTasks=tasksOf;
+/* 空节点：没挂任务、也没有有内容的子目标（只写了个名字还没拆） */
+function nodeEmpty(node){
+  if(!node) return true;
+  if(tasksOf(node).length) return false;
+  return !(node.children||[]).some(k=>!nodeEmpty(k));
+}
+/* 单节点进度：自身任务完成率 + 有内容的直接子目标平均，按来源数量等权合并；空节点不参与平均 */
 function nodePct(node){
   if(!node) return 0;
-  if(node.lv==="week"){ const ts=weekTasks(node); return ts.length?Math.round(ts.filter(t=>t.done).length/ts.length*100):0; }
-  const kids=node.children||[]; if(!kids.length) return 0;
-  return Math.round(kids.reduce((s,k)=>s+nodePct(k),0)/kids.length);
+  const ts=tasksOf(node), kids=(node.children||[]).filter(k=>!nodeEmpty(k)), parts=[];
+  if(ts.length) parts.push(ts.filter(t=>t.done).length/ts.length*100);
+  if(kids.length) parts.push(kids.reduce((s,k)=>s+nodePct(k),0)/kids.length);
+  return parts.length?Math.round(parts.reduce((a,b)=>a+b,0)/parts.length):0;
 }
-function goalAvg(list){ list=list||[];
-  if(!list.length) return { value:0, sub:"0 个方向" };
-  return { value:Math.round(list.reduce((s,n)=>s+nodePct(n),0)/list.length), sub:`${list.length} 个方向` };
+function goalAvg(list){ const all=list||[]; const valid=all.filter(n=>!nodeEmpty(n));
+  if(!valid.length) return { value:0, sub:`${all.length} 个方向` };
+  return { value:Math.round(valid.reduce((s,n)=>s+nodePct(n),0)/valid.length), sub:`${all.length} 个方向` };
 }
 /* id → { node, parentNode, path } 索引：查找、路径标签、所属目标下拉都用它 */
 function goalIndex(){ const map={};
@@ -1409,8 +1421,21 @@ function goalIndex(){ const map={};
   walk(data.goal||[],[],null); return map;
 }
 function goalFind(id){ const e=goalIndex()[id]; return e?e.node:null; }
-function weekOptions(){ return Object.entries(goalIndex()).filter(([id,e])=>e.node.lv==="week")
-  .map(([id,e])=>({ id:+id, label:e.path.join(" / ") })); }
+/* 从方向到该节点的完整链路（根 → 当前节点），用于判断周目标归属哪个方向 */
+function goalChainOf(id){ let out=null;
+  const walk=(nodes,chain)=>{ (nodes||[]).forEach(n=>{ if(out) return;
+    const c=chain.concat([n]);
+    if(String(n.id)===String(id)){ out=c; return; }
+    walk(n.children,c); }); };
+  walk(data.goal||[],[]); return out||[]; }
+/* 周目标候选；传 dirId 时只返回该方向下的周目标 */
+function weekOptions(dirId){
+  const dir=(dirId==null||dirId==="")?null:String(dirId);
+  return Object.entries(goalIndex()).filter(([id,e])=>e.node.lv!=="direction")
+    .map(([id,e])=>{ const chain=goalChainOf(e.node.id);
+      return { id:+id, label:e.path.concat([e.node.title]).join(" / "), short:e.node.title,
+               dirId:chain.length?chain[0].id:null }; })
+    .filter(o=>!dir||String(o.dirId)===dir); }
 function goalRemove(id){ const e=goalIndex()[id]; if(!e) return;
   if(e.parentNode) e.parentNode.children=(e.parentNode.children||[]).filter(c=>c.id!=id);
   else data.goal=(data.goal||[]).filter(c=>c.id!=id);
@@ -1423,8 +1448,14 @@ function goalCount(){
 }
 function goalTreeCount(node){ let c=1; (node.children||[]).forEach(k=>c+=goalTreeCount(k)); return c; }
 function weekDoneCount(){ let c=0; const ix=goalIndex(); Object.values(ix).forEach(e=>{ if(e.node.lv==="week"&&nodePct(e.node)>=100) c++; }); return c; }
-/* 展开状态：默认展开，只有明确折叠过（false）的才收起 */
-function gOpen(id){ return !(data.__goalOpen && data.__goalOpen[id]===false); }
+/* 展开状态：手动点过（true/false）的按手动值；没点过的默认展开方向和总目标两层 */
+function gOpen(id, depth){
+  const o=data.__goalOpen||{};
+  if(o[id]===true||o[id]===false) return o[id];
+  return (depth||0)<1;
+}
+/* 任务展开状态只放内存，不写数据 */
+const gTaskOpen=new Set();
 
 /* ---- 本地资料（阅读）数据：用另一个独立存储桶，和工作台数据物理隔离 ----
    它不参与首页统计、不参与导出、不参与同步。 */
@@ -1865,37 +1896,34 @@ function calendarTileHTML(){
     const isSel=iso===calSelected;
     const recs=dayMap[iso]||{};
     const sp=calInfo(iso);
-    // 排期：同天多种排期 → 用最高优先级分组作底色（工作>生活>学习>其他）
+    // 排期：一条排期一根通栏色条；颜色按分类取主题色，同分类多条用深浅区分
     const scheds=(recs.schedule||[]).slice();
-    let sgrp="", sgrpCol="";
+    let chips="", more=0, cmore="";
     if(scheds.length){
-      const top=GRP_ORDER.find(g=>scheds.some(s=>s.group===g));
-      sgrp=top||"工作"; sgrpCol=GRP_COLOR[sgrp]||"var(--module-2)";
-    }
-    // 内容优先级：有排期 → 只显示排期；无排期 → 当天最新两条今日计划
-    let chips="", more=0;
-    if(scheds.length){
+      const seen={};
       scheds.slice(0,2).forEach(x=>{
-        const col=GRP_COLOR[x.group]||"var(--module-2)";
-        chips+=`<span class="cevt ${x.done?'done':''}" style="--ec:${col}">${esc(stripN(x.title)||x.title)}</span>`;
+        const g=x.group||"其他"; seen[g]=(seen[g]||0)+1;
+        const base=GRP_COLOR[g]||"var(--module-2)";
+        const pct=[88,68,48][(seen[g]-1)%3];
+        chips+=`<div class="csch"><i class="csch-bar" style="background:color-mix(in srgb, ${base} ${pct}%, var(--surface-card))"></i><span class="csch-t">${esc(stripN(x.title)||x.title)}</span></div>`;
       });
       more=Math.max(0,scheds.length-2);
+      if(more>0) cmore=`<span class="cmore">+${more}</span>`;
     } else {
       const todos=(recs.todo||[]).filter(x=>!x.goalId)
         .sort((a,b)=>String(b.createdAt||b.date||"").localeCompare(String(a.createdAt||a.date||"")));
       todos.slice(0,2).forEach(x=>chips+=`<span class="cevt ${x.done?'done':''}" style="--ec:${modOf("todo").color}">${esc(stripN(x.title)||x.title)}</span>`);
       more=Math.max(0,todos.length-2);
+      if(more>0) chips+=`<span class="cevt more">+${more}</span>`;
     }
-    if(more>0) chips+=`<span class="cevt more">+${more}</span>`;
-    const schAttr=sgrpCol?` style="--sgrp:color-mix(in srgb, ${sgrpCol} 18%, var(--surface-card));--sbar:color-mix(in srgb, ${sgrpCol} 55%, var(--surface-card))"`:"";
-    const cls="cal-cell"+(out?" out":"")+(sgrpCol?" sched":"")+(isToday?" today":"")+(isSel?" selected":"");
+    const cls="cal-cell"+(out?" out":"")+(isToday?" today":"")+(isSel?" selected":"");
     const dow="日一二三四五六"[cur.getDay()];
     const spTxt=sp?(sp.type==="off"?`${sp.name}，放假`:`${sp.name}调休，要上班`):"";
     const titles=mods.map(mm=>(recs[mm.key]||[])).flat().map(x=>stripN(x.title)||x.title);
     const tip=`${iso} 周${dow}${spTxt?" · "+spTxt:""}${titles.length?"\n"+titles.slice(0,8).join("\n"):""}`;
     const flag=sp?`<span class="cflag ${sp.type}">${sp.type==="off"?"休":"班"}</span>`:"";
     const hname=(sp&&sp.type==="off")?`<span class="ch">${esc(sp.name)}</span>`:"";
-    cells.push(`<div class="${cls}" data-day="${iso}" title="${attr(tip)}"${schAttr}><span class="cnb"><span class="cn">${cur.getDate()}</span></span>${hname}${flag}<div class="cevt-l">${chips}</div></div>`);
+    cells.push(`<div class="${cls}" data-day="${iso}" title="${attr(tip)}"><span class="cnb"><span class="cn">${cur.getDate()}</span></span>${hname}${flag}<div class="cevt-l">${chips}</div>${cmore}</div>`);
   }
   let monthCount=0; Object.keys(dayMap).forEach(d=>{ if(d.slice(0,7)===`${y}-${pad2(m+1)}`) monthCount+=Object.values(dayMap[d]).reduce((s,a)=>s+a.length,0); });
   const wkd=["一","二","三","四","五","六","日"].map(w=>`<span>${w}</span>`).join("");  // 周一开始
@@ -1962,21 +1990,19 @@ function openDayPopover(iso){
           <b>${m.name}</b><span class="dim">${doneCount}/${items.length}</span></div>
         ${rows}</div>`;
     }
-    // 排期：显示分组徽条 + 完成勾选
+    // 排期：名称 + 分类 + 起止范围，点行直接改，不再跳转到模块页
     if(m.type==="schedule"){
-      const doneCount=items.filter(x=>x.done).length;
       const rows=items.map(x=>{
         const col=GRP_COLOR[x.group]||"var(--module-2)";
         return `<div class="dpop-row js-dpop-row" data-mkey="${m.key}" data-id="${x.id}">
-          <button class="dpop-chk ${x.done?'on':''} js-dpop-chk" data-mkey="${m.key}" data-id="${x.id}" style="border-color:${col}">${x.done?icon("check",12,2.8):""}</button>
-          <div class="dpop-row-t ${x.done?'done':''}">${esc(x.title||"(未命名)")}</div>
+          <div class="dpop-row-t">${esc(x.title||"(未命名)")}</div>
           ${schRangeText(x)!==String(x.from||x.date||"").slice(0,10)?`<span class="dpop-rng dim" style="margin-left:6px;font-size:10.5px">${esc(schRangeText(x))}</span>`:""}
           <span class="dpop-pri" style="background:color-mix(in srgb, ${col} 18%, transparent);color:${col}">${esc(x.group||"其他")}</span>
         </div>`;
       }).join("");
       return `<div class="dpop-group">
         <div class="dpop-ghead"><span class="dpop-gtic" style="background:${m.tint};color:${m.color}">${icon(m.icon,14)}</span>
-          <b>${m.name}</b><span class="dim">${doneCount}/${items.length}</span></div>
+          <b>${m.name}</b><span class="dim">${items.length} 项</span></div>
         ${rows}</div>`;
     }
     // 其他模块：显示标题 + 内容摘要
@@ -2039,16 +2065,21 @@ function openDayPopover(iso){
     b.innerHTML=x.done?icon("check",12,2.8):"";
     const row=b.closest(".dpop-row"); if(row){ row.querySelector(".dpop-row-t").classList.toggle("done", !!x.done); }
   });
-  // 点击记录跳转对应模块
+  // 点击记录：排期就地编辑，其他模块跳转
   overlay.querySelectorAll(".js-dpop-row").forEach(row=>row.onclick=()=>{
-    const m=modOf(row.dataset.mkey); if(!m) return; close(); go(m.key);
+    const m=modOf(row.dataset.mkey); if(!m) return;
+    if(m.type==="schedule"){
+      const x=(data[m.key]||[]).find(r=>String(r.id)===row.dataset.id);
+      if(!x) return; close(); openEditor(m.key, x, { dpop: iso }); return;
+    }
+    close(); go(m.key);
   });
   // 快捷添加
   overlay.querySelectorAll(".dpop-qbtn").forEach(b=>b.onclick=()=>{
     const iso=b.dataset.iso, mkey=b.dataset.q;
     const m=modOf(mkey); if(!m) return;
     if(m.key==="status"){ close(); goStatusQuick(iso); }
-    else if(m.key==="schedule"){ close(); const it=newItem(modOf("schedule")); it.from=iso; it.to=iso; openEditor("schedule", it, {isNew:true}); }
+    else if(m.key==="schedule"){ close(); const it=newItem(modOf("schedule")); it.from=iso; it.to=iso; openEditor("schedule", it, {isNew:true, dpop:iso}); }
     else{ close(); go(m.key); }
   });
 }
@@ -2543,35 +2574,39 @@ function openEditor(key,item,opts){
     fields=`<div class="field"><label>排期</label><input id="f-title" value="${attr(d.title)}" placeholder="安排什么？"/></div>
       <div class="field"><label>分类</label><div class="seg" id="f-group">${(m.groups||GRP_ORDER).map(g=>`<div class="opt ${g===d.group?'on':''}" data-v="${attr(g)}" style="flex:0 0 auto;min-width:auto">${esc(g)}</div>`).join("")}</div></div>
       <div class="field"><label>开始日期</label><input id="f-from" type="date" value="${from}"/></div>
-      <div class="field"><label>结束日期</label><input id="f-to" type="date" value="${to}"/></div>
-      <div class="field"><label>备注</label><textarea id="f-sch-note" placeholder="补充说明">${esc(d.note||'')}</textarea></div>`;
+      <div class="field"><label>结束日期</label><input id="f-to" type="date" value="${to}"/></div>`;
   } else {
     fields=`<div class="field"><label>标题</label><input id="f-title" value="${attr(d.title)}" placeholder="给这条起个名"/></div>
       ${(m.moods&&m.moods.length)?`<div class="field"><label>标签 / 心情</label><div class="seg" id="f-mood">${m.moods.map(md=>`<div class="opt ${md===d.mood?'on':''}" data-v="${attr(md)}" style="flex:0 0 auto;min-width:auto">${md}</div>`).join("")}</div></div>`:''}
       <div class="field"><label>内容</label><textarea id="f-content" placeholder="写点什么…">${esc(d.content||'')}</textarea></div>
       <div class="field"><label>日期</label><input id="f-date" type="date" value="${d.date||isoToday()}"/></div>`;
   }
-  // layout variant selector
+  // layout variant selector（排期不需要卡片样式，保持只有名称/分类/起止日期）
   const layoutOpts=[{v:'default',l:'标准'},{v:'feature',l:'大图'},{v:'quote',l:'引文'}];
-  fields=`<div class="field"><label>卡片样式</label><div class="seg" id="f-layout">${layoutOpts.map(o=>`<div class="opt ${o.v===(d.layout||'default')?'on':''}" data-v="${o.v}">${o.l}</div>`).join("")}</div></div>`+fields;
+  if(m.type!=="schedule") fields=`<div class="field"><label>卡片样式</label><div class="seg" id="f-layout">${layoutOpts.map(o=>`<div class="opt ${o.v===(d.layout||'default')?'on':''}" data-v="${o.v}">${o.l}</div>`).join("")}</div></div>`+fields;
   // custom fields (from m.fields config) — rendered after type-specific fields
+  let goalRef=null;
   (m.fields||[]).forEach(f=>{
     const v=d[f.key]||"";
     if(f.type==="goalref"){
-      const wopts=weekOptions();
-      fields+=`<div class="field"><label>${esc(f.label)}（可选）</label><div class="seg" id="f-cf-${f.key}">`+
-        `<div class="opt ${!v?'on':''}" data-v="" style="flex:0 0 auto;min-width:auto">不关联</div>`+
-        (wopts.length?wopts.map(o=>`<div class="opt ${v==o.id?'on':''}" data-v="${o.id}" style="flex:0 0 auto;min-width:auto">${esc(o.label)}</div>`).join("")
-          :`<span style="font-size:12px;color:var(--text-tertiary);align-self:center">还没有周目标，先去「目标拆解」建一个</span>`)+
+      const chain=goalChainOf(v);
+      const curDir=chain.length?String(chain[0].id):"";
+      const dirs=data.goal||[];
+      goalRef={ key:f.key, allWeeks:weekOptions(), curDir, curV:v };
+      fields+=`<div class="field"><label>关联方向（可选）</label><div class="seg" id="f-cf-direction">`+
+        `<div class="opt ${curDir?'':'on'}" data-v="" style="flex:0 0 auto;min-width:auto">不选方向</div>`+
+        (dirs.length?dirs.map(n=>`<div class="opt ${curDir===String(n.id)?'on':''}" data-v="${n.id}" style="flex:0 0 auto;min-width:auto">${esc(n.title||"未命名")}</div>`).join("")
+          :`<span style="font-size:12px;color:var(--text-tertiary);align-self:center">还没有方向，先去「目标拆解」建一个</span>`)+
         `</div></div>`;
+      fields+=`<div class="field"><label>${esc(f.label)}（可选）</label><div class="seg" id="f-cf-${f.key}"></div></div>`;
     }
     else if(f.type==="select") fields+=`<div class="field"><label>${esc(f.label)}</label><div class="seg" id="f-cf-${f.key}">${(f.options||[]).map(o=>`<div class="opt ${o===v?'on':''}" data-v="${attr(o)}" style="flex:0 0 auto;min-width:auto">${esc(o)}</div>`).join("")}</div></div>`;
     else if(f.type==="textarea") fields+=`<div class="field"><label>${esc(f.label)}</label><textarea id="f-cf-${f.key}" placeholder="${attr(f.placeholder||'')}">${esc(v)}</textarea></div>`;
     else if(f.type==="number") fields+=`<div class="field"><label>${esc(f.label)}</label><input id="f-cf-${f.key}" type="number" value="${attr(v)}" placeholder="${attr(f.placeholder||'')}"/></div>`;
     else fields+=`<div class="field"><label>${esc(f.label)}</label><input id="f-cf-${f.key}" value="${attr(v)}" placeholder="${attr(f.placeholder||'')}"/></div>`;
   });
-  // shared image URL field (all types)
-  fields+=`<div class="field"><label>图片 URL（可选）</label><input id="f-image" value="${attr(d.image||'')}" placeholder="https://..."/></div>`;
+  // shared image URL field (all types except schedule)
+  if(m.type!=="schedule") fields+=`<div class="field"><label>图片 URL（可选）</label><input id="f-image" value="${attr(d.image||'')}" placeholder="https://..."/></div>`;
   const overlay=document.createElement("div"); overlay.className="overlay";
   overlay.innerHTML=`<div class="modal"><h3>${editing?'编辑':'新建'} · ${m.name}</h3><div class="sub">${m.desc}</div>${fields}
     <div class="modal-actions">${editing?'<button class="link-danger" id="m-del">删除</button>':''}<div class="spacer"></div>
@@ -2581,19 +2616,40 @@ function openEditor(key,item,opts){
   overlay.onclick=e=>{ if(e.target===overlay) close(); };
   overlay.querySelector("#m-cancel").onclick=close;
   overlay.querySelectorAll(".seg").forEach(seg=>seg.querySelectorAll(".opt").forEach(o=>o.onclick=()=>{ seg.querySelectorAll(".opt").forEach(x=>x.classList.remove("on")); o.classList.add("on"); }));
-  if(editing) overlay.querySelector("#m-del").onclick=()=>{ close(); confirmDelete(key,d.id); };
+  /* 今日计划：先选方向 → 周目标按方向过滤；只写 goalId，不新增字段 */
+  if(goalRef){
+    const dirSeg=overlay.querySelector("#f-cf-direction");
+    const weekSeg=overlay.querySelector("#f-cf-"+goalRef.key);
+    const bindSeg=seg=>seg.querySelectorAll(".opt").forEach(o=>o.onclick=()=>{
+      seg.querySelectorAll(".opt").forEach(x=>x.classList.remove("on")); o.classList.add("on"); });
+    const renderWeeks=(dirId,sel)=>{
+      const list=goalRef.allWeeks.filter(o=>!dirId||String(o.dirId)===String(dirId));
+      weekSeg.innerHTML=`<div class="opt ${sel?'':'on'}" data-v="" style="flex:0 0 auto;min-width:auto">不关联</div>`+
+        (list.length?list.map(o=>`<div class="opt ${String(o.id)===String(sel)?'on':''}" data-v="${o.id}" title="${attr(o.label)}" style="flex:0 0 auto;min-width:auto">${esc(dirId?o.short:o.label)}</div>`).join("")
+          :`<span style="font-size:12px;color:var(--text-tertiary);align-self:center">该方向下还没有周目标</span>`);
+      bindSeg(weekSeg);
+    };
+    renderWeeks(goalRef.curDir, goalRef.curV);
+    if(dirSeg){
+      bindSeg(dirSeg);
+      dirSeg.querySelectorAll(".opt").forEach(o=>o.addEventListener("click",()=>renderWeeks(o.dataset.v,"")));
+    }
+  }
+  if(editing) overlay.querySelector("#m-del").onclick=()=>{ close(); confirmDelete(key,d.id, (opts&&opts.dpop)?()=>openDayPopover(opts.dpop):null); };
   overlay.querySelector("#m-save").onclick=()=>{
     const val=id=>{ const el=overlay.querySelector(id); return el?el.value:undefined; };
     const seg=id=>{ const el=overlay.querySelector(id+" .on"); return el?el.dataset.v:undefined; };
-    d.title=(val("#f-title")||"").trim()||"未命名";
-    d.layout=seg("#f-layout")||'default';
+    const rawTitle=(val("#f-title")||"").trim();
+    if(m.type==="todo" && !rawTitle){ toast("先写个任务名称"); return; }  // 今日计划不允许空标题
+    d.title=rawTitle||"未命名";
+    if(m.type!=="schedule") d.layout=seg("#f-layout")||'default';
     if(m.type==="todo"){ d.priority=seg("#f-prio")||d.priority; d.note=(val("#f-note")||"").trim(); }
     else if(m.type==="progress"){ d.current=Math.max(0,+val("#f-cur")||0); d.target=Math.max(1,+val("#f-tgt")||1); d.unit=(val("#f-unit")||"").trim(); d.note=(val("#f-note")||"").trim(); }
     else if(m.type==="finance"){ d.type=seg("#f-ftype")||"expense"; d.amount=Math.max(0,+val("#f-amt")||0); d.category=seg("#f-cat")||(m.categories&&m.categories[0])||"其他"; d.date=val("#f-date"); }
     else if(m.type==="schedule"){ d.group=seg("#f-group")||"工作";
       let f=(val("#f-from")||"").trim()||isoToday(), t=(val("#f-to")||"").trim()||f;
       if(f>t){ const tmp=f; f=t; t=tmp; }   // 起止倒置时自动纠正
-      d.from=f; d.to=t; d.note=(val("#f-sch-note")||"").trim(); }
+      d.from=f; d.to=t; }
     else if(m.type==="note"){ d.mood=seg("#f-mood")||d.mood||""; d.content=(val("#f-content")||"").trim(); d.date=val("#f-date"); }
     // save custom fields
     (m.fields||[]).forEach(f=>{
@@ -2602,10 +2658,11 @@ function openEditor(key,item,opts){
       else if(f.type==="number") d[f.key]=Math.max(0,+val("#f-cf-"+f.key)||0);
       else d[f.key]=(val("#f-cf-"+f.key)||"").trim();
     });
-    // save image
-    d.image=(val("#f-image")||"").trim();
+    // save image（排期没有这个字段，不能清掉旧值）
+    if(m.type!=="schedule") d.image=(val("#f-image")||"").trim();
     if(!editing) (data[key]=data[key]||[]).unshift(d);
     persist(); close();
+    if(opts&&opts.dpop) openDayPopover(opts.dpop);   // 从日历弹窗进来的，保存后回到当天弹窗
   };
 }
 
@@ -2624,7 +2681,7 @@ function newItem(m){ const base={id:Date.now()}; let item;
 }
 
 /* ---------- delete confirm ---------- */
-function confirmDelete(key,id){ const item=(data[key]||[]).find(i=>i.id==id); if(!item) return;
+function confirmDelete(key,id,after){ const item=(data[key]||[]).find(i=>i.id==id); if(!item) return;
   const overlay=document.createElement("div"); overlay.className="overlay";
   overlay.innerHTML=`<div class="modal" style="width:400px"><h3>删除记录</h3><div class="sub">确定删除「${esc(item.title||'这条记录')}」？此操作不可撤销。</div>
     <div class="modal-actions"><div class="spacer"></div><button class="btn ghost" id="c-cancel">取消</button><button class="btn danger" id="c-ok">删除</button></div></div>`;
@@ -2632,7 +2689,7 @@ function confirmDelete(key,id){ const item=(data[key]||[]).find(i=>i.id==id); if
   const close=()=>overlay.remove();
   overlay.onclick=e=>{ if(e.target===overlay) close(); };
   overlay.querySelector("#c-cancel").onclick=close;
-  overlay.querySelector("#c-ok").onclick=()=>{ data[key]=data[key].filter(i=>i.id!=id); persist(); close(); };
+  overlay.querySelector("#c-ok").onclick=()=>{ data[key]=data[key].filter(i=>i.id!=id); persist(); close(); if(after) after(); };
 }
 
 /* ---------- 轻提示 / 通用确认 ---------- */
@@ -2771,25 +2828,46 @@ function goalSide(dirs,cnt){
       ${statRow("总目标",cnt.goal+" 个")}
       ${statRow("阶段目标",cnt.stage+" 个")}
       ${statRow("周目标",cnt.week+" 个")}
-      ${statRow("每日任务",cnt.task+" 项")}</div>
+      ${statRow("日目标",cnt.task+" 项")}</div>
     <div class="side-card"><div class="sh">${icon("list",15)} 怎么用</div>
-      <div style="font-size:12.5px;color:var(--text-secondary);line-height:1.8">只有最底层的「每日任务」能勾选。勾完会自动往上更新周目标、阶段、总目标和方向的进度，不用手填。</div></div>`;
+      <div style="font-size:12.5px;color:var(--text-secondary);line-height:1.8">任意节点都能「加子目标」，层级自己选：总目标 / 阶段目标 / 周目标 / 日目标，可以跳层。进度按内容算——自身任务完成率与直接子目标平均等权合并，没内容的节点显示「—」且不拉低上级。</div></div>`;
 }
-function goalNodeHTML(node, depth){
-  const lv=GOAL_LV[node.lv]||GOAL_LEVELS[0];
-  const isWeek=node.lv==="week";
-  const tasks=isWeek?weekTasks(node):[];
-  const kids=node.children||[];
-  const pct=nodePct(node);
-  const hasBody=kids.length>0||tasks.length>0;
-  const open=gOpen(node.id);
-  const pad=depth*22;
-  const caret=`<button class="gcar ${hasBody?'':'leaf'} ${open?'':'collapsed'}" data-gtoggle="${node.id}" title="${open?'折叠':'展开'}">${icon("chevron",14,2.2)}</button>`;
-  const dl=node.deadline?`<span class="gdline">${esc(node.deadline)}</span>`:'';
-  const acts=`<div class="gacts">
-      <button data-gadd="${node.id}" title="${isWeek?'加每日任务':'加下一层'}">${icon("plus",15,2.2)}</button>
+/* 任务块：默认折叠，只显示「N 项任务」；展开后缩进显示并带引导线 */
+function tasksBlockHTML(node, indent){
+  const ts=tasksOf(node);
+  if(!ts.length) return "";
+  const open=gTaskOpen.has(String(node.id));
+  const done=ts.filter(t=>t.done).length;
+  const sum=`<button class="gtasks-sum" data-gtasks="${node.id}">${open?'收起任务':`${ts.length} 项任务 · 已完成 ${done}`}</button>`;
+  if(!open) return `<div class="gtasks" style="margin-left:${indent}px">${sum}</div>`;
+  const rows=ts.map(t=>`<div class="gtask">
+      <div class="chk ${t.done?'on':''}" data-gtaskchk="${t.id}">${icon("check",12,2.6)}</div>
+      <span class="gt-name ${t.done?'done':''}" data-gtaskopen="${t.id}">${esc(t.title||"未命名")}</span>
+      ${t.date?`<span class="gt-date">${esc(t.date)}</span>`:''}</div>`).join("");
+  return `<div class="gtasks" style="margin-left:${indent}px">${sum}${rows}
+      <button class="gtask-add" data-gtaskadd="${node.id}">${icon("plus",13,2.4)}添加每日任务</button></div>`;
+}
+function goalActs(node){
+  return `<div class="gacts">
+      <button data-gadd="${node.id}" title="加子目标">${icon("plus",15,2.2)}</button>
+      <button data-gtasknew="${node.id}" title="加每日任务">${icon("list",14)}</button>
       <button data-gedit="${node.id}" title="编辑">${icon("pen",15,2)}</button>
       <button class="gdel" data-gdel="${node.id}" title="删除">${icon("trash",15)}</button></div>`;
+}
+function goalNodeHTML(node, depth){
+  if(!node) return "";
+  const lv=GOAL_LV[node.lv]||GOAL_LEVELS[0];
+  const kids=node.children||[];
+  const empty=nodeEmpty(node);
+  const pct=nodePct(node);
+  const hasBody=kids.length>0||tasksOf(node).length>0;
+  const open=gOpen(node.id, depth);
+  const pad=depth*22;
+  const caret=`<button class="gcar ${hasBody?'':'leaf'} ${open?'':'collapsed'}" data-gtoggle="${node.id}" data-gdepth="${depth}" title="${open?'折叠':'展开'}">${icon("chevron",14,2.2)}</button>`;
+  const dl=node.deadline?`<span class="gdline">${esc(node.deadline)}</span>`:'';
+  /* 收起时也标出挂了几项每日任务，避免任务被折在深层看不见 */
+  const tNum=tasksOf(node).length;
+  const tnum=(!open&&tNum)?`<span class="gtnum">${tNum} 项任务</span>`:'';
   let sub="";
   if(node.lv==="direction"){
     const parts=[];
@@ -2800,12 +2878,7 @@ function goalNodeHTML(node, depth){
   let body="";
   if(open && hasBody){
     const kidsHTML=kids.map(k=>goalNodeHTML(k,depth+1)).join("");
-    const tasksHTML=tasks.map(t=>`<div class="gtask">
-        <div class="chk ${t.done?'on':''}" data-gtaskchk="${t.id}">${icon("check",12,2.6)}</div>
-        <span class="gt-name ${t.done?'done':''}" data-gtaskopen="${t.id}">${esc(t.title||"未命名")}</span>
-        ${t.date?`<span class="gt-date">${esc(t.date)}</span>`:''}</div>`).join("");
-    const addTask=isWeek?`<button class="gtask-add" data-gtaskadd="${node.id}">${icon("plus",13,2.4)}添加每日任务</button>`:'';
-    body=`<div class="gkids">${kidsHTML}${tasksHTML}${addTask}</div>`;
+    body=`<div class="gkids">${kidsHTML}${tasksBlockHTML(node,pad+50)}</div>`;
   }
   return `<div class="gnode">
     <div class="grow lv-${lv.key}" style="padding-left:${pad}px">
@@ -2813,11 +2886,12 @@ function goalNodeHTML(node, depth){
       <span class="gic" style="background:${lv.tint};color:${lv.color}">${icon(lv.icon,16)}</span>
       <span class="gname">${esc(node.title)}</span>
       <span class="glv">${lv.name}</span>
-      <div class="gtrack"><i style="width:${pct}%;background:${lv.color}"></i></div>
-      <span class="gpct" style="color:${lv.color}">${pct}%</span>
-      ${dl}${acts}
+      <div class="gtrack"><i style="width:${empty?0:pct}%;background:${lv.color}"></i></div>
+      <span class="gpct" style="color:${empty?'var(--text-tertiary)':lv.color}">${empty?'—':pct+'%'}</span>
+      ${dl}${tnum}${goalActs(node)}
     </div>${sub}${body}</div>`;
 }
+/* 目标拆解：一棵缩进树，默认展开方向和总目标两层，更深的点箭头展开 */
 function renderGoal(){
   const m=modOf("goal"); const dirs=data.goal||[];
   const avg=goalAvg(dirs); const cnt=goalCount();
@@ -2830,7 +2904,7 @@ function renderGoal(){
       <button class="btn ghost" id="g-expand">全部展开</button>
       <button class="btn ghost" id="g-collapse">全部折叠</button>
       <div class="spacer"></div>
-      <span style="font-size:12.5px;color:var(--text-secondary)">${cnt.direction} 方向 · ${cnt.goal} 总目标 · ${cnt.week} 周目标 · ${cnt.task} 每日任务</span>
+      <span style="font-size:12.5px;color:var(--text-secondary)">${cnt.direction} 方向 · ${cnt.goal} 总目标 · ${cnt.stage} 阶段目标 · ${cnt.week} 周目标 · ${cnt.task} 日目标</span>
     </div>
     ${headHero(m, `${avg.value}%`, `整体进度 · ${avg.sub}`)}
     <div class="mod-layout">
@@ -2842,12 +2916,18 @@ function renderGoal(){
 function wireGoal(){
   const ix=goalIndex(); const find=id=>ix[id]?ix[id].node:null; const sc=$("#screen");
   sc.querySelectorAll("[data-gtoggle]").forEach(el=>el.onclick=e=>{ e.stopPropagation();
-    const id=el.dataset.gtoggle; data.__goalOpen=data.__goalOpen||{};
-    data.__goalOpen[id]=!gOpen(id); persist(); });
+    const id=el.dataset.gtoggle, dep=+(el.dataset.gdepth||0); data.__goalOpen=data.__goalOpen||{};
+    data.__goalOpen[id]=!gOpen(id,dep); persist(); });
   sc.querySelectorAll("[data-gedit]").forEach(el=>el.onclick=e=>{ e.stopPropagation(); openGoalEditor(find(el.dataset.gedit)); });
   sc.querySelectorAll("[data-gadd]").forEach(el=>el.onclick=e=>{ e.stopPropagation();
     const node=find(el.dataset.gadd); if(!node) return;
-    if(node.lv==="week") addTask(node); else openGoalEditor(null,node); });
+    openGoalEditor(null,node); });
+  sc.querySelectorAll("[data-gtasknew]").forEach(el=>el.onclick=e=>{ e.stopPropagation();
+    const node=find(el.dataset.gtasknew); if(node) addTask(node); });
+  sc.querySelectorAll("[data-gtasks]").forEach(el=>el.onclick=e=>{ e.stopPropagation();
+    const id=String(el.dataset.gtasks);
+    if(gTaskOpen.has(id)) gTaskOpen.delete(id); else gTaskOpen.add(id);
+    renderGoal(); });
   sc.querySelectorAll("[data-gdel]").forEach(el=>el.onclick=e=>{ e.stopPropagation(); goalDelConfirm(find(el.dataset.gdel)); });
   sc.querySelectorAll("[data-gtaskchk]").forEach(el=>el.onclick=e=>{ e.stopPropagation();
     const t=(data.todo||[]).find(x=>x.id==el.dataset.gtaskchk); if(!t) return;
@@ -2855,7 +2935,7 @@ function wireGoal(){
   sc.querySelectorAll("[data-gtaskopen]").forEach(el=>el.onclick=()=>{ const t=(data.todo||[]).find(x=>x.id==el.dataset.gtaskopen); if(t) openEditor("todo",t); });
   sc.querySelectorAll("[data-gtaskadd]").forEach(el=>el.onclick=()=>{ const node=find(el.dataset.gtaskadd); if(node) addTask(node); });
   const nd=$("#g-new-dir"); if(nd) nd.onclick=()=>openGoalEditor(null,null);
-  const ex=$("#g-expand"); if(ex) ex.onclick=()=>{ data.__goalOpen={}; persist(); };
+  const ex=$("#g-expand"); if(ex) ex.onclick=()=>{ const o={}; Object.keys(goalIndex()).forEach(id=>o[id]=true); data.__goalOpen=o; persist(); };
   const co=$("#g-collapse"); if(co) co.onclick=()=>{ const o={}; Object.keys(goalIndex()).forEach(id=>o[id]=false); data.__goalOpen=o; persist(); };
 
   // 方向卡片拖拽排序
@@ -2885,29 +2965,39 @@ function goalDelConfirm(node){ if(!node) return;
   askConfirm("删除节点",`会连同它下面的 ${n-1} 个子项一起删掉；关联的每日任务只解除关联，不会被删。`,"删除",()=>{ goalRemove(node.id); persist(); });
 }
 /* 从周目标下面「加每日任务」= 在今日计划里新建一条并关联过去 */
-function addTask(week){
-  const draft=newItem(modOf("todo")); draft.goalId=week.id;
+function addTask(week, title){
+  const draft=newItem(modOf("todo")); draft.goalId=week.id; if(title) draft.title=title;
   openEditor("todo", draft, { isNew:true });
+}
+/* 新建子目标时可选的层级：日目标 = 今日计划里的每日任务，保存后落到 data.todo 并关联当前节点 */
+const GOAL_PICK=[{k:"goal",n:"总目标"},{k:"stage",n:"阶段目标"},{k:"week",n:"周目标"},{k:"day",n:"日目标"}];
+function goalFieldHTML(lvKey,d){
+  const ph={ direction:"例如：💼 职业", goal:"例如：成为更强的测试工程师", stage:"例如：提升自动化测试能力", week:"例如：Python 测试脚本" }[lvKey]||"";
+  let f=`<div class="field"><label>名称</label><input id="f-gtitle" value="${attr(d.title)}" placeholder="${attr(ph)}"/></div>`;
+  if(lvKey==="direction"){
+    f+=`<div class="field"><label>当前阶段</label><input id="f-gstage" value="${attr(d.stage||'')}" placeholder="例如：寻找稳定的测试岗位"/></div>
+      <div class="field"><label>本周推进</label><input id="f-gweek" value="${attr(d.week||'')}" placeholder="例如：完善项目经历"/></div>`;
+  } else {
+    f+=`<div class="field"><label>期限（可选）</label><input id="f-gdeadline" value="${attr(d.deadline||'')}" placeholder="例如：本周 / 本季度 / 年底"/></div>`;
+  }
+  return f;
+}
+function goalTip(lvKey){
+  if(lvKey==="week") return "周目标的进度 = 它下面「每日任务」的完成比例；任务在下面「添加每日任务」或今日计划里勾选。";
+  if(lvKey==="direction") return "方向是你长期推进的一条主线，进度由下面的目标自动汇总。";
+  return "这一层进度由下面的子项自动汇总，不用手填；还没拆出内容时显示「—」，不影响上级进度。";
 }
 /* 目标节点编辑弹窗（方向 / 总目标 / 阶段 / 周各自的字段略有不同） */
 function openGoalEditor(node, parent){
   const editing=!!node;
-  const lvKey=node?node.lv:(parent?(GOAL_NEXT[parent.lv]||"goal"):"direction");
-  const lv=GOAL_LV[lvKey];
+  let lvKey=node?node.lv:(parent?(GOAL_NEXT[parent.lv]||parent.lv):"direction");
   const d=node||{ lv:lvKey, title:"", stage:"", week:"", deadline:"", children:[] };
-  const ph={ direction:"例如：💼 职业", goal:"例如：成为更强的测试工程师", stage:"例如：提升自动化测试能力", week:"例如：Python 测试脚本" }[lvKey];
-  let fields=`<div class="field"><label>名称</label><input id="f-gtitle" value="${attr(d.title)}" placeholder="${attr(ph)}"/></div>`;
-  if(lvKey==="direction"){
-    fields+=`<div class="field"><label>当前阶段</label><input id="f-gstage" value="${attr(d.stage||'')}" placeholder="例如：寻找稳定的测试岗位"/></div>
-      <div class="field"><label>本周推进</label><input id="f-gweek" value="${attr(d.week||'')}" placeholder="例如：完善项目经历"/></div>`;
-  } else {
-    fields+=`<div class="field"><label>期限（可选）</label><input id="f-gdeadline" value="${attr(d.deadline||'')}" placeholder="例如：本周 / 本季度 / 年底"/></div>`;
-  }
-  const tip = lvKey==="week" ? "周目标的进度 = 它下面「每日任务」的完成比例；任务在下面「添加每日任务」或今日计划里勾选。"
-    : lvKey==="direction" ? "方向是你长期推进的一条主线，进度由下面的目标自动汇总。"
-    : "这一层进度由下面的子项自动汇总，不用手填。";
+  const pickable=!editing&&!!parent;   // 有父节点时才让选层级；新建方向固定顶层
   const overlay=document.createElement("div"); overlay.className="overlay";
-  overlay.innerHTML=`<div class="modal" style="width:440px"><h3>${editing?'编辑':'新建'} · ${lv.name}</h3><div class="sub">${tip}</div>${fields}
+  overlay.innerHTML=`<div class="modal" style="width:460px"><h3 id="f-gh">${editing?'编辑':'新建'} · ${GOAL_LV[lvKey].name}</h3>
+    ${pickable?`<div class="field"><label>建在哪一层</label><div class="seg" id="f-glevel">${GOAL_PICK.map(o=>`<div class="opt ${o.k===lvKey?'on':''}" data-lv="${o.k}">${o.n}</div>`).join("")}</div></div>`:''}
+    <div class="sub" id="f-gtip">${goalTip(lvKey)}</div>
+    <div id="f-gfields">${goalFieldHTML(lvKey,d)}</div>
     <div class="modal-actions">${editing?'<button class="link-danger" id="m-del">删除</button>':''}<div class="spacer"></div>
       <button class="btn ghost" id="m-cancel">取消</button><button class="btn" id="m-save">保存</button></div></div>`;
   document.body.appendChild(overlay);
@@ -2915,6 +3005,19 @@ function openGoalEditor(node, parent){
   overlay.onclick=e=>{ if(e.target===overlay) close(); };
   overlay.querySelector("#m-cancel").onclick=close;
   if(editing) overlay.querySelector("#m-del").onclick=()=>{ close(); goalDelConfirm(d); };
+  if(pickable){
+    overlay.querySelectorAll("#f-glevel .opt").forEach(o=>o.onclick=()=>{
+      const k=o.dataset.lv; if(k===lvKey) return;
+      const cur=(overlay.querySelector("#f-gtitle")||{}).value||"";
+      if(k==="day"){ close(); addTask(parent, cur.trim()); return; }   // 日目标直接进今日计划的任务表单
+      lvKey=k;
+      overlay.querySelectorAll("#f-glevel .opt").forEach(x=>x.classList.toggle("on",x.dataset.lv===k));
+      overlay.querySelector("#f-gh").textContent=`新建 · ${GOAL_LV[k].name}`;
+      overlay.querySelector("#f-gtip").textContent=goalTip(k);
+      overlay.querySelector("#f-gfields").innerHTML=goalFieldHTML(k,d);
+      const el=overlay.querySelector("#f-gtitle"); if(el){ el.value=cur; el.focus(); }
+    });
+  }
   overlay.querySelector("#m-save").onclick=()=>{
     const val=id=>{ const el=overlay.querySelector(id); return el?el.value:""; };
     const title=(val("#f-gtitle")||"").trim(); if(!title){ toast("先写个名称"); return; }
@@ -2922,7 +3025,8 @@ function openGoalEditor(node, parent){
       const nn={ id:Date.now(), lv:lvKey, title, children:[] };
       if(lvKey==="direction"){ nn.stage=(val("#f-gstage")||"").trim(); nn.week=(val("#f-gweek")||"").trim(); }
       else nn.deadline=(val("#f-gdeadline")||"").trim();
-      if(parent){ parent.children=parent.children||[]; parent.children.push(nn); }
+      if(parent){ parent.children=parent.children||[]; parent.children.push(nn);
+        data.__goalOpen=data.__goalOpen||{}; data.__goalOpen[parent.id]=true; }
       else { data.goal=data.goal||[]; data.goal.push(nn); }
     } else {
       d.title=title;
