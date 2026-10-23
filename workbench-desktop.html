@@ -2897,12 +2897,15 @@ function renderGoal(){
   const avg=goalAvg(dirs); const cnt=goalCount();
   const tree=dirs.length?dirs.map(n=>`<div class="gdir" draggable="true" data-gdir="${n.id}">${goalNodeHTML(n,0)}</div>`).join("")
     :`<div class="gempty">还没有方向。先定 1–3 个你真正想推进的方向，再往下拆总目标。</div>`;
+  /* 工具栏「展开/折叠」合并成一个切换按钮：还有折叠节点就显示「全部展开」 */
+  let allOpen=true;
+  const walkOpen=(ns,d)=>(ns||[]).forEach(n=>{ if((n.children||[]).length&&!gOpen(n.id,d)) allOpen=false; walkOpen(n.children,d+1); });
+  walkOpen(data.goal,0);
   $("#screen").innerHTML=`<div class="header"><div><h2>${m.name}</h2><p>${m.desc}</p></div>
       <div class="spacer"></div><span class="date-chip">${icon("calendar",14)} ${dateStr()}</span></div>
     <div class="toolbar">
       <button class="btn" id="g-new-dir">${icon("plus",16,2.2)}新建方向</button>
-      <button class="btn ghost" id="g-expand">全部展开</button>
-      <button class="btn ghost" id="g-collapse">全部折叠</button>
+      <button class="btn ghost" id="g-expand">${allOpen?'全部折叠':'全部展开'}</button>
       <div class="spacer"></div>
       <span style="font-size:12.5px;color:var(--text-secondary)">${cnt.direction} 方向 · ${cnt.goal} 总目标 · ${cnt.stage} 阶段目标 · ${cnt.week} 周目标 · ${cnt.task} 日目标</span>
     </div>
@@ -2935,8 +2938,14 @@ function wireGoal(){
   sc.querySelectorAll("[data-gtaskopen]").forEach(el=>el.onclick=()=>{ const t=(data.todo||[]).find(x=>x.id==el.dataset.gtaskopen); if(t) openEditor("todo",t); });
   sc.querySelectorAll("[data-gtaskadd]").forEach(el=>el.onclick=()=>{ const node=find(el.dataset.gtaskadd); if(node) addTask(node); });
   const nd=$("#g-new-dir"); if(nd) nd.onclick=()=>openGoalEditor(null,null);
-  const ex=$("#g-expand"); if(ex) ex.onclick=()=>{ const o={}; Object.keys(goalIndex()).forEach(id=>o[id]=true); data.__goalOpen=o; persist(); };
-  const co=$("#g-collapse"); if(co) co.onclick=()=>{ const o={}; Object.keys(goalIndex()).forEach(id=>o[id]=false); data.__goalOpen=o; persist(); };
+  const ex=$("#g-expand"); if(ex) ex.onclick=()=>{
+    const o={}, open={};
+    const walk=(ns,d)=>(ns||[]).forEach(n=>{ o[n.id]=true; if((n.children||[]).length&&!gOpen(n.id,d)) open.collapsed=true; walk(n.children,d+1); });
+    walk(data.goal,0);
+    // 还有折叠节点 → 点这次是全部展开；已经全展开 → 点这次是全部折叠
+    Object.keys(o).forEach(id=>o[id]=!!open.collapsed);
+    data.__goalOpen=o; persist();
+  };
 
   // 方向卡片拖拽排序
   let dragDirId=null;
