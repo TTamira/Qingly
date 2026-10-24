@@ -1432,18 +1432,19 @@ if(_migrateResult.ok && !_migrateResult.skipped){
   try{ toast && toast("数据迁移失败，请联系开发者"); }catch(e){}
 }
 
-/* ---------- 目标拆解（方向 → 总目标 → 阶段目标 → 周目标 → 每日任务） ----------
-   进度自下而上汇总：周目标 = 它下面「每日任务」的完成比例；
-   阶段 / 总目标 / 方向 = 各自子项进度的平均值。只有最底层的每日任务能勾选。
-   「每日任务」不单独存一份，就是「今日计划」里关联了该周目标的任务（goalId）。 */
+/* ---------- 目标拆解（方向 → 总目标 → 阶段目标 → 子目标… → 今日任务） ----------
+   目标树不绑定时间周期，层数不固定：任意节点都能继续加子目标，也可以逐步拆解。
+   进度自下而上汇总：叶子节点 = 它下面「今日任务」的完成比例；
+   其余节点 = 自身任务与直接子目标等权合并。
+   「今日任务」不单独存一份，就是「今日计划」里关联了该节点（任意层级）的任务（goalId）。 */
 const GOAL_LEVELS=[
   { key:"direction", name:"方向",    icon:"compass",  color:"var(--module-2)", tint:"#edf1f5" },
   { key:"goal",      name:"总目标",  icon:"target",   color:"var(--module-5)", tint:"#f1eef4" },
   { key:"stage",     name:"阶段目标",icon:"layers",   color:"var(--module-1)", tint:"#eef3ec" },
-  { key:"week",      name:"周目标",  icon:"calendar", color:"var(--module-3)", tint:"#f6f0e6" },
+  { key:"week",      name:"子目标",  icon:"leaf",     color:"var(--module-3)", tint:"#f6f0e6" },
 ];
 const GOAL_LV={}; GOAL_LEVELS.forEach(l=>GOAL_LV[l.key]=l);
-const GOAL_NEXT={ direction:"goal", goal:"stage", stage:"week" };   // 下一层是什么
+const GOAL_NEXT={ direction:"goal", goal:"stage", stage:"week" };   // 只是「新建时的默认层级」，不限制实际层数
 
 /* 旧版「长期计划」数据（一键 +1 那种）自动并入新结构，避免老用户打开就空 */
 function migrateGoal(){
@@ -1485,7 +1486,7 @@ function goalIndex(){ const map={};
   walk(data.goal||[],[],null); return map;
 }
 function goalFind(id){ const e=goalIndex()[id]; return e?e.node:null; }
-/* 从方向到该节点的完整链路（根 → 当前节点），用于判断周目标归属哪个方向 */
+/* 从方向到该节点的完整链路（根 → 当前节点），用于判断节点归属哪个方向 */
 function goalChainOf(id){ let out=null;
   const walk=(nodes,chain)=>{ (nodes||[]).forEach(n=>{ if(out) return;
     const c=chain.concat([n]);
@@ -1494,7 +1495,7 @@ function goalChainOf(id){ let out=null;
   walk(data.goal||[],[]); return out||[]; }
 /* 节点自身或任一上级已归档 → 不在当前树里，也不进树统计 */
 function goalHidden(id){ const chain=goalChainOf(id); return !chain.length || chain.some(n=>n.archived); }
-/* 周目标候选；传 dirId 时只返回该方向下的周目标 */
+/* 今日任务可关联的目标候选（除方向外的任意层级，层数不限）；传 dirId 时只返回该方向下的节点 */
 function weekOptions(dirId){
   const dir=(dirId==null||dirId==="")?null:String(dirId);
   return Object.entries(goalIndex()).filter(([id,e])=>e.node.lv!=="direction"&&!goalHidden(e.node.id))
@@ -1517,7 +1518,7 @@ function goalRemove(id){ const e=goalIndex()[id]; if(!e) return 0;
 }
 function goalCount(){
   const n={ direction:0, goal:0, stage:0, week:0,
-            task:(data.todo||[]).filter(t=>t.goalId&&!goalHidden(t.goalId)&&!isRepeat(t)).length };   // 归档子树与循环打卡不计入「日目标」
+            task:(data.todo||[]).filter(t=>t.goalId&&!goalHidden(t.goalId)&&!isRepeat(t)).length };   // 归档子树与循环打卡不计入「关联任务」
   const walk=ns=>(ns||[]).forEach(x=>{ if(x.archived) return; if(n[x.lv]!=null) n[x.lv]++; walk(x.children); });
   walk(data.goal); return n;
 }
@@ -1650,7 +1651,7 @@ function overviewTileHTML(){
       <div class="pct">${r.value}%</div><div class="lbl">${o.label}</div><div class="sub">${r.sub}</div></div>`; }).join("");
   const stats=[];
   if(visKeys.includes("todo")){ const left=(data.todo||[]).filter(x=>todoApplies(x,today())&&!todoDone(x)).length; stats.push(`<div class="ov2-stat" data-open="todo"><span class="s-ic" style="color:var(--module-3)">${icon("list",17)}</span><div class="s-tx"><div class="s-v">${left}</div><div class="s-l">待办未完成</div></div></div>`); }
-  if(visKeys.includes("goal")){ stats.push(`<div class="ov2-stat" data-open="goal"><span class="s-ic" style="color:var(--module-1)">${icon("check",17)}</span><div class="s-tx"><div class="s-v">${weekDoneCount()}</div><div class="s-l">周目标已达成</div></div></div>`); }
+  if(visKeys.includes("goal")){ stats.push(`<div class="ov2-stat" data-open="goal"><span class="s-ic" style="color:var(--module-1)">${icon("check",17)}</span><div class="s-tx"><div class="s-v">${weekDoneCount()}</div><div class="s-l">子目标已达成</div></div></div>`); }
   const recCount=vm.filter(m=>m.type!=="reader").reduce((s,m)=>s+((data[m.key]||[]).length),0);
   stats.push(`<div class="ov2-stat"><span class="s-ic" style="color:var(--module-2)">${icon("chart",17)}</span><div class="s-tx"><div class="s-v">${recCount}</div><div class="s-l">累计记录条数</div></div></div>`);
   if(!rings && !stats.length) return "";
@@ -1684,7 +1685,7 @@ function progressTileHTML(){
       <div class="prog-goal">
         <div class="pg-tt">🎯 目标拆解</div>
         <div class="pg-avg">${gavg}%</div>
-        <div class="pg-sub">${(data.goal||[]).filter(n=>!n.archived).length} 个方向 · 周目标达成 ${weekDoneCount()}</div>
+        <div class="pg-sub">${(data.goal||[]).filter(n=>!n.archived).length} 个方向 · 子目标达成 ${weekDoneCount()}</div>
         <div class="pg-more" data-open="goal">查看更多&nbsp;></div>
       </div>
       <div class="prog-dirs"><div class="pd-title">方向进度</div>
@@ -1781,7 +1782,7 @@ function momentumTileHTML(){
       <span class="mom-ic" style="color:var(--module-2)">${icon("compass",17)}</span>
       <div class="mom-main">
         <div class="mom-top"><span class="mom-name">${esc(n.title)}</span><span class="mom-recent ${rec.stale?'stale':''}">${esc(rec.text)}</span></div>
-        <div class="mom-meta">${n.stage?`当前阶段：${esc(n.stage)}`:'<span class="dim">还没写当前阶段</span>'}${n.week?`&nbsp;·&nbsp;本周推进：${esc(n.week)}`:''}</div>
+        <div class="mom-meta">${n.stage?`当前阶段：${esc(n.stage)}`:'<span class="dim">还没写当前阶段</span>'}${n.week?`&nbsp;·&nbsp;近期推进：${esc(n.week)}`:''}</div>
       </div>
       <div class="mom-prog"><div class="mom-track"><i style="width:${pct}%;background:var(--module-2)"></i></div><span class="mom-pct">${pct}%</span></div>
     </div>`).join("")
@@ -2216,18 +2217,17 @@ function buildWeeklyDigest(){
     undone.forEach(x=>L.push(`- ⬜ ${x.title}（${x.group||"其他"} · 计划 ${x.date}）`));
     if(!undone.length) L.push("- （没有没做的，很干净）");
   }
-  /* 目标拆解：方向 → 每个方向下有任务的周目标 */
+  /* 目标拆解：方向 → 每个方向下挂了任务的节点（任意层级） */
   if(vk.includes("goal")){
     L.push(""); L.push(`【目标拆解】共 ${(data.goal||[]).length} 个方向`);
     (data.goal||[]).forEach(d=>{
       const rec=momentRecent(dirLastTouch(d));
       L.push(`- 方向「${d.title}」进度 ${nodePct(d)}% · 最近推进：${rec.text}`);
       if(d.stage) L.push(`  当前阶段：${d.stage}`);
-      if(d.week) L.push(`  本周推进：${d.week}`);
+      if(d.week) L.push(`  近期推进：${d.week}`);
       const walk=(n,path)=>{ (n.children||[]).forEach(k=>{
-        if(k.lv==="week"){ const ts=weekTasks(k);
-          if(ts.length) L.push(`  · 周目标「${k.title}」（${path.concat([k.title]).join(" / ")}）：${ts.filter(t=>t.done).length}/${ts.length} 任务完成`);
-        }
+        const ts=tasksOf(k).filter(t=>!isRepeat(t));
+        if(ts.length) L.push(`  · 目标「${k.title}」（${path.concat([k.title]).join(" / ")}）：${ts.filter(t=>t.done).length}/${ts.length} 任务完成`);
         walk(k,path.concat([k.title])); }); };
       walk(d,[d.title]);
     });
@@ -2720,7 +2720,7 @@ function openEditor(key,item,opts){
   overlay.onclick=e=>{ if(e.target===overlay) close(); };
   overlay.querySelector("#m-cancel").onclick=close;
   overlay.querySelectorAll(".seg").forEach(seg=>seg.querySelectorAll(".opt").forEach(o=>o.onclick=()=>{ seg.querySelectorAll(".opt").forEach(x=>x.classList.remove("on")); o.classList.add("on"); }));
-  /* 今日计划：先选方向 → 周目标按方向过滤；只写 goalId，不新增字段 */
+  /* 今日计划：先选方向 → 可关联目标按方向过滤（任意层级都能关联）；只写 goalId，不新增字段 */
   if(goalRef){
     const dirSeg=overlay.querySelector("#f-cf-direction");
     const weekSeg=overlay.querySelector("#f-cf-"+goalRef.key);
@@ -2730,7 +2730,7 @@ function openEditor(key,item,opts){
       const list=goalRef.allWeeks.filter(o=>!dirId||String(o.dirId)===String(dirId));
       weekSeg.innerHTML=`<div class="opt ${sel?'':'on'}" data-v="" style="flex:0 0 auto;min-width:auto">不关联</div>`+
         (list.length?list.map(o=>`<div class="opt ${String(o.id)===String(sel)?'on':''}" data-v="${o.id}" title="${attr(o.label)}" style="flex:0 0 auto;min-width:auto">${esc(dirId?o.short:o.label)}</div>`).join("")
-          :`<span style="font-size:12px;color:var(--text-tertiary);align-self:center">该方向下还没有周目标</span>`);
+          :`<span style="font-size:12px;color:var(--text-tertiary);align-self:center">该方向下还没有可关联的目标</span>`);
       bindSeg(weekSeg);
     };
     renderWeeks(goalRef.curDir, goalRef.curV);
@@ -3046,10 +3046,10 @@ function goalSide(dirs,cnt){
       ${statRow("方向",cnt.direction+" 个")}
       ${statRow("总目标",cnt.goal+" 个")}
       ${statRow("阶段目标",cnt.stage+" 个")}
-      ${statRow("周目标",cnt.week+" 个")}
-      ${statRow("日目标",cnt.task+" 项")}</div>
+      ${statRow("子目标",cnt.week+" 个")}
+      ${statRow("关联任务",cnt.task+" 项")}</div>
     <div class="side-card"><div class="sh">${icon("list",15)} 怎么用</div>
-      <div style="font-size:12.5px;color:var(--text-secondary);line-height:1.8">任意节点都能「加子目标」，层级自己选：总目标 / 阶段目标 / 周目标 / 日目标，可以跳层。进度模式在编辑里切换：<b>自动汇总</b>（自身任务 + 直接子目标等权合并）、<b>手动</b>、<b>完成状态</b>。没拆出内容的节点显示「尚未拆解」，不拉低上级。</div></div>
+      <div style="font-size:12.5px;color:var(--text-secondary);line-height:1.8">任意节点都能「加子目标」，可以一直往下拆，层数不限；总目标 / 阶段目标 / 子目标只是默认标签，可以跳层。目标不绑定日、周、月等周期，「预期完成时间」按需填。进度模式在编辑里切换：<b>自动汇总</b>（自身任务 + 直接子目标等权合并）、<b>手动</b>、<b>完成状态</b>。没拆出内容的节点显示「尚未拆解」，不拉低上级。</div></div>
     ${arcs.length?`<div class="side-card"><div class="sh">${icon("folder",15)} 已归档</div>
       <div style="font-size:12.5px;color:var(--text-secondary);line-height:1.7;margin-bottom:9px">归档的目标不显示在树里，也不参与进度汇总。</div>
       <button class="btn ghost" id="g-arc" style="width:100%;justify-content:center">查看已归档 ${arcs.length} 个</button></div>`:''}`;
@@ -3131,8 +3131,8 @@ function goalNodeHTML(node, depth){
   if(node.lv==="direction"){
     const parts=[];
     if(node.stage) parts.push(`当前阶段：${esc(node.stage)}`);
-    if(node.week) parts.push(`本周推进：${esc(node.week)}`);
-    sub=`<div class="gsub">${parts.join("&nbsp;·&nbsp;")||'<span style="color:var(--text-tertiary)">还没写当前阶段 / 本周推进</span>'}</div>`;
+    if(node.week) parts.push(`近期推进：${esc(node.week)}`);
+    sub=`<div class="gsub">${parts.join("&nbsp;·&nbsp;")||'<span style="color:var(--text-tertiary)">还没写当前阶段 / 近期推进</span>'}</div>`;
   }
   let body="";
   if(open && hasBody){
@@ -3168,7 +3168,7 @@ function renderGoal(){
       <button class="btn" id="g-new-dir">${icon("plus",16,2.2)}新建方向</button>
       <button class="btn ghost" id="g-expand">${allOpen?'全部折叠':'全部展开'}</button>
       <div class="spacer"></div>
-      <span style="font-size:12.5px;color:var(--text-secondary)">${cnt.direction} 方向 · ${cnt.goal} 总目标 · ${cnt.stage} 阶段目标 · ${cnt.week} 周目标 · ${cnt.task} 日目标</span>
+      <span style="font-size:12.5px;color:var(--text-secondary)">${cnt.direction} 方向 · ${cnt.goal} 总目标 · ${cnt.stage} 阶段目标 · ${cnt.week} 子目标 · ${cnt.task} 关联任务</span>
     </div>
     ${headHero(m, `${avg.value}%`, `整体进度 · ${avg.sub}`)}
     <div class="mod-layout">
@@ -3255,13 +3255,13 @@ function goalDelConfirm(node){ if(!node) return;
     if(moved) toast(`${moved} 项任务已保留在今日计划，仅解除目标关联`);
   });
 }
-/* 从周目标下面「加每日任务」= 在今日计划里新建一条并关联过去 */
+/* 从任意目标节点「加每日任务」= 在今日计划里新建一条并关联过去 */
 function addTask(week, title){
   const draft=newItem(modOf("todo")); draft.goalId=week.id; if(title) draft.title=title;
   openEditor("todo", draft, { isNew:true });
 }
-/* 新建子目标时可选的层级：日目标 = 今日计划里的每日任务，保存后落到 data.todo 并关联当前节点 */
-const GOAL_PICK=[{k:"goal",n:"总目标"},{k:"stage",n:"阶段目标"},{k:"week",n:"周目标"},{k:"day",n:"日目标"}];
+/* 新建时选的层级标签：子目标只是默认名，可以一直往下拆；今日任务 = 保存到今日计划并关联当前节点 */
+const GOAL_PICK=[{k:"goal",n:"总目标"},{k:"stage",n:"阶段目标"},{k:"week",n:"子目标"},{k:"day",n:"今日任务"}];
 /* 进度模式三选一：自动汇总 / 手动 / 完成状态；切换只换算法，历史记录不动 */
 function goalModeHTML(mode,d){
   if(mode==="manual") return `<div class="field"><label>当前进度（%）</label><input id="f-gman" type="number" min="0" max="100" value="${(d&&d.pMode==='manual'&&d.pManual!=null)?attr(d.pManual):''}" placeholder="填写实际完成到多少，0–100"/></div>`;
@@ -3279,13 +3279,13 @@ function goalModeHint(node,mode){
   return `切换后只按「已完成 / 未完成」显示，不再显示百分比。`;
 }
 function goalFieldHTML(lvKey,d,node){
-  const ph={ direction:"例如：💼 职业", goal:"例如：成为更强的测试工程师", stage:"例如：提升自动化测试能力", week:"例如：Python 测试脚本" }[lvKey]||"";
+  const ph={ direction:"例如：💼 职业", goal:"例如：成为更强的测试工程师", stage:"例如：提升自动化测试能力", week:"例如：补完权限测试用例" }[lvKey]||"";
   let f=`<div class="field"><label>名称</label><input id="f-gtitle" value="${attr(d.title)}" placeholder="${attr(ph)}"/></div>`;
   if(lvKey==="direction"){
     f+=`<div class="field"><label>当前阶段</label><input id="f-gstage" value="${attr(d.stage||'')}" placeholder="例如：寻找稳定的测试岗位"/></div>
-      <div class="field"><label>本周推进</label><input id="f-gweek" value="${attr(d.week||'')}" placeholder="例如：完善项目经历"/></div>`;
+      <div class="field"><label>近期推进</label><input id="f-gweek" value="${attr(d.week||'')}" placeholder="例如：完善项目经历"/></div>`;
   } else {
-    f+=`<div class="field"><label>期限（可选）</label><input id="f-gdeadline" value="${attr(d.deadline||'')}" placeholder="例如：本周 / 本季度 / 年底"/></div>`;
+    f+=`<div class="field"><label>预期完成时间（可选）</label><input id="f-gdeadline" value="${attr(d.deadline||'')}" placeholder="留空也行，例如：本季度 / 年底"/></div>`;
   }
   const mode=d.pMode||"auto";
   f+=`<div class="field"><label>进度模式</label><div class="seg" id="f-gmode">
@@ -3297,11 +3297,11 @@ function goalFieldHTML(lvKey,d,node){
   return f;
 }
 function goalTip(lvKey){
-  if(lvKey==="week") return "周目标的进度默认 = 它下面「每日任务」的完成比例；也可以改成手动或完成状态。";
+  if(lvKey==="week") return "子目标是阶段目标下面的通用拆解层，可以继续往下加，层数不限；进度默认 = 它下面「今日任务」的完成比例，也可以改成手动或完成状态。";
   if(lvKey==="direction") return "方向是你长期推进的一条主线，进度默认由下面的目标自动汇总，也可以手动标进度。";
   return "这一层默认由下面的子项自动汇总；还没拆出内容时显示「尚未拆解」，不影响上级进度。";
 }
-/* 目标节点编辑弹窗（方向 / 总目标 / 阶段 / 周各自的字段略有不同） */
+/* 目标节点编辑弹窗（方向 / 总目标 / 阶段 / 子目标各自的字段略有不同） */
 function openGoalEditor(node, parent){
   const editing=!!node;
   let lvKey=node?node.lv:(parent?(GOAL_NEXT[parent.lv]||parent.lv):"direction");
@@ -3346,7 +3346,7 @@ function openGoalEditor(node, parent){
     overlay.querySelectorAll("#f-glevel .opt").forEach(o=>o.onclick=()=>{
       const k=o.dataset.lv; if(k===lvKey) return;
       const cur=(overlay.querySelector("#f-gtitle")||{}).value||"";
-      if(k==="day"){ close(); addTask(parent, cur.trim()); return; }   // 日目标直接进今日计划的任务表单
+      if(k==="day"){ close(); addTask(parent, cur.trim()); return; }   // 今日任务直接进今日计划的任务表单
       lvKey=k;
       overlay.querySelectorAll("#f-glevel .opt").forEach(x=>x.classList.toggle("on",x.dataset.lv===k));
       overlay.querySelector("#f-gh").textContent=`新建 · ${GOAL_LV[k].name}`;
