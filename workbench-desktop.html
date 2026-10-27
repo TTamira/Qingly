@@ -896,6 +896,10 @@
   .gempty { padding:44px 20px; text-align:center; color:var(--text-secondary); background:var(--surface-card); border:1px solid var(--border); border-radius:var(--radius-card); box-shadow:var(--shadow-card); }
   .grow { display:flex; align-items:center; gap:9px; padding:10px 8px; border-radius:11px; transition:background .14s; }
   .grow:hover { background:var(--surface-nested); }
+  /* 节点标题行拖拽：拖到另一节点上=成为其最后一个子节点 */
+  .grow[data-grow] { cursor:grab; }
+  .grow.dragging { opacity:.35; }
+  .grow.drag-over { outline:2px dashed var(--accent); outline-offset:-2px; background:var(--accent-muted); }
   .grow .gcar { width:26px; height:26px; flex:0 0 auto; border:none; background:transparent; color:var(--text-tertiary);
     cursor:pointer; display:grid; place-items:center; border-radius:8px; transition:transform .2s, background .14s, color .14s; outline:none; }
   .grow .gcar:hover { background:var(--accent-muted); color:var(--accent); }
@@ -3188,7 +3192,7 @@ function goalNodeHTML(node, depth){
     body=`<div class="gkids">${kidsHTML}${tasksBlockHTML(node,pad+50)}</div>`;
   }
   return `<div class="gnode">
-    <div class="grow lv-${lv.key}" style="padding-left:${pad}px">
+    <div class="grow lv-${lv.key}" draggable="true" data-grow="${node.id}" style="padding-left:${pad}px">
       ${caret}
       <span class="gic" style="background:${lv.tint};color:${lv.color}">${icon(lv.icon,16)}</span>
       <span class="gname">${esc(node.title)}</span>
@@ -3260,20 +3264,66 @@ function wireGoal(){
     data.__goalOpen=o; persist();
   };
 
+  // 拖拽：标题行(.grow)拖到另一节点上=成为其最后一个子节点；方向卡片(.gdir)空白处拖拽=排序
+  let dragDirId=null, dragNodeId=null;
+  const clearDragOver=()=>sc.querySelectorAll(".gdir.drag-over,.grow.drag-over").forEach(g=>g.classList.remove("drag-over"));
+  const nestInto=(srcId,dstId)=>{
+    const src=find(srcId), dst=find(dstId);
+    if(!src||!dst||src===dst) return;
+    if(goalSubtreeIds(src).includes(String(dst.id))) return;    // 防环：不能拖进自己或自己的子孙
+    const eSrc=goalIndex()[src.id];
+    const arr=(eSrc&&eSrc.parentNode)?eSrc.parentNode.children:(data.goal||[]);
+    const i=arr.indexOf(src); if(i>=0) arr.splice(i,1);         // 从原父级摘出
+    dst.children=dst.children||[]; dst.children.push(src);      // 挂到目标末尾并展开
+    // 按新深度修正层级标签（方向/总目标/阶段/子目标），进度在 render 时自下而上自动重算
+    const relv=(n,d)=>{ n.lv=GOAL_LEVELS[Math.min(d,3)].key; (n.children||[]).forEach(k=>relv(k,d+1)); };
+    relv(src,(ix[dst.id]?ix[dst.id].path.length:0)+1);
+    data.__goalOpen=data.__goalOpen||{}; data.__goalOpen[dst.id]=true;
+    persist();
+  };
+
+  sc.querySelectorAll(".grow[data-grow]").forEach(el=>{
+    el.addEventListener("dragstart",e=>{
+      if(e.target.closest("button,input,a,textarea,select")){ e.preventDefault(); return; }
+      dragNodeId=el.dataset.grow; el.classList.add("dragging");
+      e.stopPropagation();                                      // 别同时触发方向卡片排序拖拽
+      e.dataTransfer.effectAllowed="move";
+      try{ e.dataTransfer.setData("text/plain", String(dragNodeId)); }catch(err){}
+    });
+    el.addEventListener("dragend",()=>{ el.classList.remove("dragging"); dragNodeId=null; clearDragOver(); });
+    el.addEventListener("dragover",e=>{
+      if(!dragNodeId||el.dataset.grow===dragNodeId) return;     // 卡片排序拖拽放行给 .gdir 处理
+      const src=find(dragNodeId), dst=find(el.dataset.grow);
+      if(!src||!dst||goalSubtreeIds(src).includes(String(dst.id))) return;
+      e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect="move";
+      clearDragOver(); el.classList.add("drag-over");
+    });
+    el.addEventListener("dragleave",()=>el.classList.remove("drag-over"));
+    el.addEventListener("drop",e=>{
+      if(!dragNodeId) return;                                   // 卡片排序拖拽，放行给 .gdir 处理
+      e.preventDefault(); e.stopPropagation();
+      const id=dragNodeId; dragNodeId=null;
+      nestInto(id, el.dataset.grow); clearDragOver();
+    });
+  });
+
   // 方向卡片拖拽排序
-  let dragDirId=null;
   sc.querySelectorAll(".gdir").forEach(el=>{
     el.addEventListener("dragstart",e=>{
+      if(dragNodeId){ e.preventDefault(); return; }
       if(e.target.closest("button,input,a,textarea,select")){ e.preventDefault(); return; }
       dragDirId=el.dataset.gdir; el.classList.add("dragging");
       e.dataTransfer.effectAllowed="move";
       try{ e.dataTransfer.setData("text/plain", String(el.dataset.gdir)); }catch(err){}
     });
-    el.addEventListener("dragend",()=>{ el.classList.remove("dragging"); sc.querySelectorAll(".gdir").forEach(g=>g.classList.remove("drag-over")); });
+    el.addEventListener("dragend",()=>{ el.classList.remove("dragging"); dragDirId=null; clearDragOver(); });
     el.addEventListener("dragover",e=>{ e.preventDefault(); e.dataTransfer.dropEffect="move";
-      sc.querySelectorAll(".gdir").forEach(g=>g.classList.remove("drag-over"));
-      if(el.dataset.gdir!==dragDirId) el.classList.add("drag-over"); });
+      clearDragOver();
+      if(el.dataset.gdir!==dragDirId && el.dataset.gdir!==dragNodeId) el.classList.add("drag-over"); });
     el.addEventListener("drop",e=>{ e.preventDefault(); e.stopPropagation();
+      if(dragNodeId){                                           // 嵌套拖拽落在卡片空白处 → 也挂到该方向末尾
+        const id=dragNodeId; dragNodeId=null;
+        nestInto(id, el.dataset.gdir); clearDragOver(); return; }
       const fromId=+dragDirId, toId=+el.dataset.gdir;
       if(fromId===toId) return;
       const arr=data.goal||[];
