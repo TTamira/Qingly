@@ -2239,8 +2239,17 @@ function buildWeeklyDigest(){
       if(d.stage) L.push(`  当前阶段：${d.stage}`);
       if(d.week) L.push(`  近期推进：${d.week}`);
       const walk=(n,path)=>{ (n.children||[]).forEach(k=>{
-        const ts=tasksOf(k).filter(t=>!isRepeat(t));
-        if(ts.length) L.push(`  · 目标「${k.title}」（${path.concat([k.title]).join(" / ")}）：${ts.filter(t=>t.done).length}/${ts.length} 任务完成`);
+        const ts=tasksOf(k);
+        if(ts.length){
+          /* 与目标进度同口径：一次性算完成数，循环按本周应打卡/已打卡（无排期的不算） */
+          const one=ts.filter(t=>!isRepeat(t));
+          const ws=ts.filter(t=>isRepeat(t)).map(t=>repWeekStat(t)).filter(s=>s.total>0);
+          const rDone=ws.reduce((a,s)=>a+s.done,0), rTotal=ws.reduce((a,s)=>a+s.total,0);
+          const bits=[];
+          if(one.length) bits.push(`一次性 ${one.filter(t=>t.done).length}/${one.length}`);
+          if(rTotal) bits.push(`循环打卡 ${rDone}/${rTotal}`);
+          L.push(`  · 目标「${k.title}」（${path.concat([k.title]).join(" / ")}）：${bits.length?bits.join(" · "):"本周无可统计排期"}`);
+        }
         walk(k,path.concat([k.title])); }); };
       walk(d,[d.title]);
     });
