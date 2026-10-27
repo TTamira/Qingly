@@ -211,7 +211,10 @@
 
   /* ---------- 自绘透明标题栏（无边框窗口，与工作台融为一体） ---------- */
   .tbar { position: fixed; top: 0; left: 0; right: 0; height: var(--titlebar-h); z-index: 40;
-    display: flex; align-items: center; background: transparent; user-select: none; }
+    display: flex; align-items: center; user-select: none;
+    /* 两段式底色（全主题变量）：左=侧栏渐变顶色，右=页面底色。未滚动时与背后同色不可见，
+       内容滚动穿过顶部时被挡住，不再与右上角窗口按钮（最小化/最大化/关闭）重叠 */
+    background: linear-gradient(90deg, var(--drawer-bg-top) 0, var(--drawer-bg-top) var(--sidebar-w), var(--page-bg) var(--sidebar-w)); }
   .tbar .tb-name { display: flex; align-items: center; gap: 7px; padding-left: 18px; flex: 0 0 auto;
     font-size: 12px; font-weight: 700; letter-spacing: .08em; color: color-mix(in srgb, var(--drawer-text) 52%, transparent); }
   .tbar .tb-dot { width: 6px; height: 6px; border-radius: 50%; background: color-mix(in srgb, var(--drawer-text) 34%, transparent); }
@@ -957,6 +960,11 @@
   /* ---------- 循环计划（阶段 B） ---------- */
   .repb { background:var(--accent-muted); color:var(--accent); }
   .tmpb { background:var(--surface-nested); color:var(--text-tertiary); }
+  /* 子目标自动状态徽标：按进度推导，颜色全部复用主题变量 */
+  .gstb { font-size:11px; }
+  .gstb.doing { background:var(--accent-muted); color:var(--accent); }
+  .gstb.done  { background:color-mix(in srgb, var(--module-1) 15%, transparent); color:var(--module-1); }
+  .gstb.todo  { background:var(--surface-nested); color:var(--text-tertiary); }
   .rep-days { display:flex; gap:6px; }
   .rday { flex:1; text-align:center; padding:7px 0; border-radius:8px; border:1px solid var(--border-input);
     background:var(--surface-card); font-size:12.5px; font-weight:700; color:var(--text-secondary); cursor:pointer; transition:all .14s; user-select:none; }
@@ -1458,21 +1466,26 @@ migrateGoal();
 /* 某个节点下面挂着的「每日任务」= 今日计划里关联过来的任务（任意层级都可以挂） */
 function tasksOf(node){ return (data.todo||[]).filter(x=>String(x.goalId)===String(node.id)); }
 const weekTasks=tasksOf;
-/* 空节点：已归档算空；手动/完成状态模式即使没任务也算有内容；否则看任务与子目标 */
+/* 空节点：已归档算空；手动/完成状态模式即使没任务也算有内容；否则看任务与子目标（有任务就算内容，循环打卡也算） */
 function nodeEmpty(node){
   if(!node||node.archived) return true;
   if(node.pMode==="manual"||node.pMode==="check") return false;
-  if(tasksOf(node).some(t=>!isRepeat(t))) return false;    // 只有循环打卡不算目标内容
+  if(tasksOf(node).length) return false;
   return !(node.children||[]).some(k=>!k.archived&&!nodeEmpty(k));
 }
-/* 单节点进度：手动/完成状态直接给值；自动模式 = 自身任务完成率 + 有内容的直接子目标平均，等权合并 */
+/* 单节点进度：手动/完成状态直接给值；自动模式 = 自身任务完成率 + 有内容的直接子目标平均，等权合并。
+   任务层按「每条任务一票」平铺平均：一次性任务完成记 100 未完成记 0；
+   循环任务按本周完成率（已打卡/应打卡）折算，本周无排期（暂停/结束/未设日期）的不进分母 */
 function nodePct(node){
   if(!node||node.archived) return 0;
   if(node.pMode==="manual") return Math.max(0,Math.min(100,Math.round(+node.pManual||0)));
   if(node.pMode==="check") return node.pDone?100:0;
-  /* 循环计划只是日常打卡，不参与目标进度；这里只统计一次性任务 */
-  const ts=tasksOf(node).filter(t=>!isRepeat(t)), kids=(node.children||[]).filter(k=>!k.archived&&!nodeEmpty(k)), parts=[];
-  if(ts.length) parts.push(ts.filter(t=>t.done).length/ts.length*100);
+  const parts=[];
+  tasksOf(node).forEach(t=>{
+    if(isRepeat(t)){ const s=repWeekStat(t); if(s.total>0) parts.push(s.done/s.total*100); }
+    else parts.push(t.done?100:0);
+  });
+  const kids=(node.children||[]).filter(k=>!k.archived&&!nodeEmpty(k));
   if(kids.length) parts.push(kids.reduce((s,k)=>s+nodePct(k),0)/kids.length);
   return parts.length?Math.round(parts.reduce((a,b)=>a+b,0)/parts.length):0;
 }
@@ -2760,7 +2773,7 @@ function openEditor(key,item,opts){
             <div class="opt ${rep.paused?'':'on'}" data-v="0">进行中</div>
             <div class="opt ${rep.paused?'on':''}" data-v="1">暂停</div></div></div>`;
         }
-        h+=`<div class="gmhint">暂停 / 结束只影响之后的安排，已打卡的日期不会变。循环打卡不计入目标进度；产生了成果请在目标里单独记录。</div>`;
+        h+=`<div class="gmhint">暂停 / 结束只影响之后的安排，已打卡的日期不会变。循环打卡按本周完成率计入目标进度。</div>`;
       }
       w.innerHTML=h;
       w.querySelectorAll("[data-repday]").forEach(el=>el.onclick=()=>{
@@ -2947,7 +2960,24 @@ function savePreImportSnapshot(){
 }
 function exportData(){
   const payload={ app:"personal-workbench", version:BACKUP_VERSION, exportedAt:new Date().toISOString(), data:workBucketData() };
-  downloadJSON(payload, `工作台备份-${isoToday()}.json`);
+  const name=`工作台备份-${isoToday()}.json`;
+  // Tauri 环境：弹系统「另存为」选路径；浏览器环境：保持 blob 下载
+  const core=window.__TAURI__&&window.__TAURI__.core;
+  if(core&&typeof core.invoke==="function"){
+    let lastDir=""; try{ lastDir=localStorage.getItem("__exportDir")||""; }catch(e){}
+    core.invoke("export_backup",{ content:JSON.stringify(payload,null,2), defaultName:name, defaultDir:lastDir })
+      .then(p=>{
+        if(p){
+          try{ localStorage.setItem("__exportDir", p.replace(/[\\/][^\\/]+$/,"")); }catch(e){}
+          toast("已导出到 "+p);
+        }else{
+          toast("已取消导出 · 数据没有变化");
+        }
+      })
+      .catch(err=>toast("导出失败 · "+(err&&err.message?err.message:err)));
+    return;
+  }
+  downloadJSON(payload, name);
   toast("已导出 · 本地资料和私人空间不在备份里");
 }
 /* 真正写入导入数据：只替换工作桶，私人空间与本地资料保持本机原样 */
@@ -3106,6 +3136,15 @@ function goalActs(node){
       <button data-gedit="${node.id}" title="编辑">${icon("pen",15,2)}</button>
       <button class="gdel" data-gdel="${node.id}" title="删除">${icon("trash",15)}</button></div>`;
 }
+/* 子目标自动状态徽标：按进度推导 已完成/进行中/未开始（用户已确认方案）。
+   完成状态模式已有「已完成/未完成」文字、空节点显示「尚未拆解」，这两种情况不重复加徽标 */
+function goalStatusBadge(node){
+  if(!node||node.lv!=="week"||(node.pMode||"auto")==="check") return "";
+  if(nodeEmpty(node)) return "";
+  const pct=nodePct(node);
+  const st=pct>=100?["done","已完成"]:pct>0?["doing","进行中"]:["todo","未开始"];
+  return `<span class="badge gstb ${st[0]}" title="根据进度自动判断">${st[1]}</span>`;
+}
 function goalNodeHTML(node, depth){
   if(!node) return "";
   const lv=GOAL_LV[node.lv]||GOAL_LEVELS[0];
@@ -3145,6 +3184,7 @@ function goalNodeHTML(node, depth){
       <span class="gic" style="background:${lv.tint};color:${lv.color}">${icon(lv.icon,16)}</span>
       <span class="gname">${esc(node.title)}</span>
       <span class="glv">${lv.name}</span>
+      ${goalStatusBadge(node)}
       <div class="gtrack"><i style="width:${empty?0:pct}%;background:${lv.color}"></i></div>
       ${pctHTML}
       ${mode==="manual"?`<span class="gmode">手动</span>`:''}
@@ -3218,6 +3258,7 @@ function wireGoal(){
       if(e.target.closest("button,input,a,textarea,select")){ e.preventDefault(); return; }
       dragDirId=el.dataset.gdir; el.classList.add("dragging");
       e.dataTransfer.effectAllowed="move";
+      try{ e.dataTransfer.setData("text/plain", String(el.dataset.gdir)); }catch(err){}
     });
     el.addEventListener("dragend",()=>{ el.classList.remove("dragging"); sc.querySelectorAll(".gdir").forEach(g=>g.classList.remove("drag-over")); });
     el.addEventListener("dragover",e=>{ e.preventDefault(); e.dataTransfer.dropEffect="move";
@@ -3268,10 +3309,10 @@ function goalModeHTML(mode,d){
   if(mode==="check") return `<div class="field"><label>完成状态</label><div class="seg" id="f-gchk">
       <div class="opt ${d&&d.pDone?'on':''}" data-pdone="1">已完成</div>
       <div class="opt ${!d||!d.pDone?'on':''}" data-pdone="0">未完成</div></div></div>`;
-  return `<div class="gm">按已有的任务和子目标自动计算；还没拆出来的内容不进分母，不会把进度拉低。</div>`;
+  return `<div class="gm">按已有的任务和子目标自动计算；循环任务按本周完成率折算计入，本周无排期的不计；还没拆出来的内容不进分母，不会把进度拉低。</div>`;
 }
 function goalModeHint(node,mode){
-  if(!node) return mode==="manual"?"保存后按你填的百分比显示，不随拆解变化。":mode==="check"?"保存后只显示「已完成 / 未完成」。":"保存后按子目标和任务自动汇总。";
+  if(!node) return mode==="manual"?"保存后按你填的百分比显示，不随拆解变化。":mode==="check"?"保存后只显示「已完成 / 未完成」。":"保存后按子目标和任务自动汇总；循环任务按本周完成率折算。";
   const cur=nodePct(node);
   if(mode===(node.pMode||"auto")) return `当前进度 ${cur}%，模式不变。`;
   if(mode==="auto"){ const t=nodePct({...node,pMode:"auto"}); return `切换后按子目标自动汇总，当前为 ${t}%；原手动进度保留在数据里，但不再参与计算。`; }
@@ -3748,6 +3789,9 @@ $("#btnSync").onclick = openSync;
 buildNav();
 render();
 eyeEnsureTimer();   // 护眼专注的秒表常驻，切到别的板块也在走
+
+/* ---------- 窗口级拖放防护：拦截文件拖入 WebView 触发的页面导航（模块内部元素拖拽不受影响） ---------- */
+["dragover","drop"].forEach(ev=>document.addEventListener(ev,e=>e.preventDefault()));
 
 /* ---------- 自绘标题栏：窗口按钮与双击最大化（仅在 Tauri 环境接管，浏览器预览不生效） ---------- */
 (function bindTitlebar(){
