@@ -1,13 +1,13 @@
-# 依赖
-node_modules/
+# ---- 与青序项目无关的工作区内容（不推云端） ----
+resume/
+skills/
+.screenshots/
+.trae-html-share-packages/
+.trae/
+.vscode/
+.uploads/
 
-# 构建产物
-dist/
-web/
-src-tauri/target/
-
-# Tauri 生成
-src-tauri/gen/schemas/
-
-# 本地备份
+# ---- 本机备份与含个人数据的文件（绝不推云端） ----
+.backup/
+data_backup_*.json
 *.bak_*
