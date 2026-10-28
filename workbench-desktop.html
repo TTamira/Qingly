@@ -887,7 +887,7 @@
   .rpt-tb .up { color:var(--module-1); font-weight:700; }
   .rpt-tb .down { color:var(--danger); font-weight:700; }
 
-  /* ---------- 目标拆解（方向→总目标→阶段→周→每日任务） ---------- */
+  /* ---------- 目标拆解（方向→总目标→阶段→周→执行任务） ---------- */
   .goal-tree { display:flex; flex-direction:column; gap:14px; }
   .gdir { background:var(--surface-card); border:1px solid var(--border); border-radius:var(--radius-card); box-shadow:var(--shadow-card); padding:8px 10px; cursor:grab; transition:opacity .15s, box-shadow .15s; }
   .gdir.dragging { opacity:.35; cursor:grabbing; }
@@ -932,6 +932,11 @@
   .gtask .gt-name:hover { color:var(--accent); }
   .gtask .gt-name.done { text-decoration:line-through; color:var(--text-secondary); }
   .gtask .gt-date { font-size:11.5px; color:var(--text-tertiary); margin-left:auto; }
+  .gtask .gt-sched { flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center;
+    width:22px; height:22px; border-radius:6px; border:1px solid var(--border-input);
+    background:transparent; color:var(--text-tertiary); cursor:pointer; }
+  .gtask .gt-sched.on { background:var(--accent-muted); border-color:var(--accent-muted); color:var(--accent); }
+  .gtask .gt-sched:hover { color:var(--accent); border-color:var(--accent); }
   .gtask-add { display:inline-flex; align-items:center; gap:5px; font-size:12.5px; font-weight:600; color:var(--text-secondary);
     background:none; border:none; cursor:pointer; padding:7px 8px; border-radius:8px; margin-top:2px; transition:all .14s; }
   .gtask-add:hover { color:var(--accent); background:var(--surface-nested); }
@@ -1111,7 +1116,7 @@ const CONFIG = {
   // 今日概览环形：只统计「今日计划」+「长期计划」两项（其他模块不进首页统计）
   overview: [
     { key:"todo", label:"今日计划", icon:"list", color:"var(--accent)",
-      calc: d => { const it=(d.todo||[]).filter(x=>todoApplies(x,today())); const done=it.filter(todoDone).length; return { value: it.length?Math.round(done/it.length*100):0, sub:`${done}/${it.length} 项` }; } },
+      calc: d => { const it=(d.todo||[]).filter(x=>inPlan(x)&&todoApplies(x,today())); const done=it.filter(todoDone).length; return { value: it.length?Math.round(done/it.length*100):0, sub:`${done}/${it.length} 项` }; } },
     { key:"goal", label:"目标拆解", icon:"target", color:"var(--module-2)", calc: d => goalAvg(d.goal) },
   ],
 
@@ -1252,6 +1257,10 @@ function todoDone(t){ return isRepeat(t)?repDone(t,today()):!!t.done; }
 function todoToggle(t){ if(isRepeat(t)){ repToggle(t,today()); return; }
   t.done=!t.done; if(t.done&&!t.date) t.date=today(); }
 function todoApplies(t,iso){ return !isRepeat(t)||repActive(t,iso||today()); }
+/* 是否已安排进今日计划：sched 缺省（旧数据）视为已安排；
+   目标树拆出的「执行任务」默认 sched=false，只属于目标树，主动「安排」后才进今日计划。
+   sched 只影响展示与每日安排，不影响任务归属与目标进度（nodePct 不看它）。 */
+function inPlan(t){ return !!t && t.sched!==false; }
 function weekDates(){ const d=new Date(today()+"T00:00:00"); d.setDate(d.getDate()-((d.getDay()+6)%7));
   const out=[]; for(let i=0;i<7;i++){ const c=new Date(d); c.setDate(d.getDate()+i); out.push(isoOf(c)); } return out; }
 function repWeekStat(t){ let total=0,done=0;
@@ -1444,11 +1453,13 @@ if(_migrateResult.ok && !_migrateResult.skipped){
   try{ toast && toast("数据迁移失败，请联系开发者"); }catch(e){}
 }
 
-/* ---------- 目标拆解（方向 → 总目标 → 阶段目标 → 子目标… → 今日任务） ----------
+/* ---------- 目标拆解（方向 → 总目标 → 阶段目标 → 子目标… → 执行任务） ----------
    目标树不绑定时间周期，层数不固定：任意节点都能继续加子目标，也可以逐步拆解。
-   进度自下而上汇总：叶子节点 = 它下面「今日任务」的完成比例；
+   进度自下而上汇总：叶子节点 = 它下面「执行任务」的完成比例；
    其余节点 = 自身任务与直接子目标等权合并。
-   「今日任务」不单独存一份，就是「今日计划」里关联了该节点（任意层级）的任务（goalId）。 */
+   「执行任务」不单独存一份，就是「今日计划」里关联了该节点（任意层级）的任务（goalId）。
+   解耦规则：任务是否进「今日计划」由 sched 决定（sched!==false 才显示在今日计划）；
+   目标树新建的执行任务默认 sched=false，用户主动「安排」后才进今日计划。 */
 const GOAL_LEVELS=[
   { key:"direction", name:"方向",    icon:"compass",  color:"var(--module-2)", tint:"#edf1f5" },
   { key:"goal",      name:"总目标",  icon:"target",   color:"var(--module-5)", tint:"#f1eef4" },
@@ -1467,7 +1478,7 @@ function migrateGoal(){
 }
 migrateGoal();
 
-/* 某个节点下面挂着的「每日任务」= 今日计划里关联过来的任务（任意层级都可以挂） */
+/* 某个节点下面挂着的「执行任务」= 今日计划数据里关联过来的任务（任意层级都可以挂） */
 function tasksOf(node){ return (data.todo||[]).filter(x=>String(x.goalId)===String(node.id)); }
 const weekTasks=tasksOf;
 /* 空节点：已归档算空；手动/完成状态模式即使没任务也算有内容；否则看任务与子目标（有任务就算内容，循环打卡也算） */
@@ -1512,7 +1523,7 @@ function goalChainOf(id){ let out=null;
   walk(data.goal||[],[]); return out||[]; }
 /* 节点自身或任一上级已归档 → 不在当前树里，也不进树统计 */
 function goalHidden(id){ const chain=goalChainOf(id); return !chain.length || chain.some(n=>n.archived); }
-/* 今日任务可关联的目标候选（除方向外的任意层级，层数不限）；传 dirId 时只返回该方向下的节点 */
+/* 执行任务可关联的目标候选（除方向外的任意层级，层数不限）；传 dirId 时只返回该方向下的节点 */
 function weekOptions(dirId){
   const dir=(dirId==null||dirId==="")?null:String(dirId);
   return Object.entries(goalIndex()).filter(([id,e])=>e.node.lv!=="direction"&&!goalHidden(e.node.id))
@@ -1780,7 +1791,7 @@ function setStatusNote(v){ const t=today(); const cur=data.__status[t];
 
 /* ---------- 方向推进：每条方向最近一次推进（不打卡、不积分，只做一个“最近有没有动”的提示） ---------- */
 const MOMENTUM_STALE_DAYS=5;      // 超过这么多天没有推进，就把“最近推进”标黄提醒
-/* 方向下面所有「每日任务」里，最近一次被完成的那天 */
+/* 方向下面所有「执行任务」里，最近一次被完成的那天 */
 function dirLastTouch(node){ let last="";
   const walk=n=>{ (n.children||[]).forEach(k=>{ if(k.lv==="week") weekTasks(k).forEach(t=>{ if(t.done&&t.date&&t.date>last) last=t.date; }); walk(k); }); };
   walk(node); return last;
@@ -2225,6 +2236,8 @@ function buildWeeklyDigest(){
   L.push("");
   L.push(`—— 以下是我 ${r.start}（周一）到 ${r.end}（今天）的数据 ——`);
   /* 今日计划 */
+  /* 周报是回顾过去一周：已完成任务即使后来被移出今日计划（sched=false）也属于历史成果，
+     所以这里不过滤 sched；未安排的任务没有完成日期，天然不会进「未完成」段 */
   if(vk.includes("todo")){
     const ts=(data.todo||[]), done=ts.filter(x=>x.done&&inWeek(x.date)), undone=ts.filter(x=>!x.done&&x.date&&x.date<=r.end);
     L.push(""); L.push(`【今日计划】本周完成 ${done.length} 项`);
@@ -2390,6 +2403,8 @@ function renderModule(key){
   if(m.type==="reader") return renderReader();
   if(m.type==="goal") return renderGoal();
   const all=data[key]||[]; let it=all;
+  const plan=(m.type==="todo")?all.filter(inPlan):all;   // 今日计划只显示已安排的任务；未安排的执行任务留在目标树
+  if(m.type==="todo") it=plan;
   const t=today();
   const groups=m.groups||[];
   if(groups.length && todoGroup!=="全部") it=it.filter(x=>(x.group||"")===todoGroup);
@@ -2406,8 +2421,8 @@ function renderModule(key){
       <div class="mini"><div class="l">结余</div><div class="v">¥${inc-exp}</div></div>
       <div class="mini"><div class="l">笔数</div><div class="v">${all.length}</div></div></div>`;
   } else if(m.type==="todo"){
-    const done=all.filter(x=>todoDone(x)).length;
-    head=headHero(m, `${done}/${all.length}`, "已完成");
+    const done=plan.filter(x=>todoDone(x)).length;
+    head=headHero(m, `${done}/${plan.length}`, "已完成");
   } else if(m.type==="checkin"){
     const done=all.filter(x=>x.log&&x.log[t]).length;
     head=headHero(m, `${done}/${all.length}`, "今日已打卡");
@@ -2424,11 +2439,13 @@ function renderModule(key){
 
   // 分类页签（今日计划专用：全部 / 工作 / 生活 / 学习 / 其他）
   const tabs = groups.length ? `<div class="tabbar">${["全部"].concat(groups).map(g=>{
-      const n = g==="全部" ? all.length : all.filter(x=>(x.group||"")===g).length;
+      const n = g==="全部" ? plan.length : plan.filter(x=>(x.group||"")===g).length;
       return `<div class="tab ${g===todoGroup?'on':''}" data-g="${attr(g)}">${esc(g)}<span class="tnum">${n}</span></div>`; }).join("")}</div>` : "";
-  // 手动清理已完成（不自动清空，什么时候清由你决定）；循环计划不参与清理，避免连打卡历史一起删掉
-  const clearable = x => !isRepeat(x) && !!x.done;
-  const clearBtn = (m.type==="todo" && all.some(clearable)) ? `<button class="btn ghost" id="btn-clear">${icon("trash",15)}清理已完成</button>` : "";
+  // 手动清理已完成（不自动清空，什么时候清由你决定）；循环计划不参与清理，避免连打卡历史一起删掉。
+  // 清理分级：临时任务（无 goalId）物理删除；关联目标的执行任务只移出今日计划，目标树里的任务和完成记录保留。
+  const clearTmp = x => !isRepeat(x) && !!x.done && !x.goalId;
+  const clearLink = x => !isRepeat(x) && !!x.done && !!x.goalId;
+  const clearBtn = (m.type==="todo" && plan.some(x=>clearTmp(x)||clearLink(x))) ? `<button class="btn ghost" id="btn-clear">${icon("trash",15)}清理已完成</button>` : "";
 
   const body = it.length ? it.map(x=>recHTML(m,x)).join("")
     : `<div class="empty"><span class="e">${icon(m.icon,28)}</span><div>${q||todoGroup!=="全部"?'这个分类下还没有记录':'还没有记录，点右上角「新建」添加第一条吧'}</div></div>`;
@@ -2444,7 +2461,7 @@ function renderModule(key){
         <div class="sec-title">全部记录 <span id="rec-count" style="margin-left:auto;font-weight:500;color:var(--text-secondary);font-size:12px">${it.length} 条</span></div>
         <div class="rec-grid">${body}</div>
       </div>
-      <aside class="mod-side">${m.type==="todo"?eyeTileHTML(true):""}${sideStats(m,all)}</aside>
+      <aside class="mod-side">${m.type==="todo"?eyeTileHTML(true):""}${sideStats(m, m.type==="todo"?plan:all)}</aside>
     </div>`;
   const s=$("#search");
   let composing=false;
@@ -2454,8 +2471,14 @@ function renderModule(key){
   s.addEventListener("input",()=>{ if(!composing) refresh(); });
   $("#screen").querySelectorAll(".tabbar .tab").forEach(el=>el.onclick=()=>{ todoGroup=el.dataset.g; renderModule(key); });
   const cb=$("#btn-clear"); if(cb) cb.onclick=()=>{
-    const n=all.filter(clearable).length;
-    askConfirm("清理已完成", `会把 ${n} 条已完成的待办删掉，删了找不回来（循环计划不在清理范围内）。`, "清理", ()=>{ data[key]=data[key].filter(x=>!clearable(x)); persist(); });
+    const nT=plan.filter(clearTmp).length, nL=plan.filter(clearLink).length;
+    let sub=`会把 ${nT} 条已完成的临时任务删掉，删了找不回来`;
+    if(nL) sub+=`；${nL} 条关联目标的执行任务只移出今日计划，目标树里的任务和完成记录保留`;
+    askConfirm("清理已完成", sub+"（循环计划不在清理范围内）。", "清理", ()=>{
+      data[key]=data[key].filter(x=>!clearTmp(x));
+      data[key].forEach(x=>{ if(clearLink(x)) x.sched=false; });
+      persist();
+    });
   };
   $("#btn-new").onclick=()=>openEditor(key,null);
   wireModule(key);
@@ -2467,6 +2490,7 @@ function renderModuleResults(key){
   const m=modOf(key); const all=data[key]||[];
   const groups=m.groups||[];
   let it=all;
+  if(m.type==="todo") it=it.filter(inPlan);   // 今日计划只显示已安排的任务
   if(groups.length && todoGroup!=="全部") it=it.filter(x=>(x.group||"")===todoGroup);
   const q=searchQ.trim().toLowerCase();
   if(q) it=it.filter(x=>(x.title||"").toLowerCase().includes(q)||(x.note||x.content||"").toLowerCase().includes(q));
@@ -2564,7 +2588,10 @@ function headHero(m, big, label){
 
 function recHTML(m,x){
   const pin=`<button class="pin-btn js-pin ${x.pinned?'on':''}" data-id="${x.id}" title="置顶">${icon("star",15)}</button>`;
-  const del=`<button class="del js-del" data-id="${x.id}" title="删除">${icon("trash",15)}</button>`;
+  // 移出与删除分离：关联目标的执行任务在今日计划里只提供「移出今日计划」，不物理删除
+  const del=(m.type==="todo"&&x.goalId)
+    ? `<button class="del js-unsched" data-id="${x.id}" title="移出今日计划（任务保留在目标树）">${icon("calendar",15)}</button>`
+    : `<button class="del js-del" data-id="${x.id}" title="删除">${icon("trash",15)}</button>`;
   const acts=`<div class="acts">${pin}${del}</div>`;
   const chkMark=icon("check",13,2.4);
   const thumb=x.image?`<img class="thumb" src="${attr(x.image)}" alt="">`:'';
@@ -2658,6 +2685,10 @@ function wireModule(key){ const m=modOf(key);
     persist(); });
   $("#screen").querySelectorAll("[data-edit]").forEach(el=>el.onclick=()=>openEditor(key,(data[key]).find(i=>i.id==el.dataset.edit)));
   $("#screen").querySelectorAll(".js-del").forEach(el=>el.onclick=e=>{ e.stopPropagation(); confirmDelete(key, el.dataset.id); });
+  // 移出今日计划：只取消安排（sched=false），不删除任务、不动完成状态
+  $("#screen").querySelectorAll(".js-unsched").forEach(el=>el.onclick=e=>{ e.stopPropagation();
+    const x=(data[key]).find(i=>i.id==el.dataset.id); if(!x) return;
+    x.sched=false; persist(); toast("已移出今日计划（任务保留在目标树）"); });
   $("#screen").querySelectorAll(".js-pin").forEach(el=>el.onclick=e=>{ e.stopPropagation(); const x=(data[key]).find(i=>i.id==el.dataset.id); x.pinned=!x.pinned; persist(); });
   // 长期计划：+1 / -1
   $("#screen").querySelectorAll(".js-inc").forEach(el=>el.onclick=e=>{ e.stopPropagation();
@@ -2681,7 +2712,8 @@ function openEditor(key,item,opts){
         <div class="opt ${rep.kind==='daily'?'on':''}" data-v="daily">每天</div>
         <div class="opt ${rep.kind==='weekday'?'on':''}" data-v="weekday">工作日</div>
         <div class="opt ${rep.kind==='custom'?'on':''}" data-v="custom">自定义</div></div></div>
-      <div id="f-repwrap"></div>`;
+      <div id="f-repwrap"></div>
+      ${(!editing&&d.sched===false)?`<div class="gm">这条任务默认只挂在目标树里，不会进入今日计划；需要执行时在目标树任务行点日历图标「安排到今日计划」。</div>`:''}`;
   } else if(m.type==="checkin"){
     fields=`<div class="field"><label>打卡项</label><input id="f-title" value="${attr(d.title)}" placeholder="例如：喝够 8 杯水"/></div>
       <p class="sub" style="margin:0">保存后可在卡片点击左侧方块打卡；连续天数自动统计，每天从零开始。</p>`;
@@ -2739,14 +2771,14 @@ function openEditor(key,item,opts){
   if(m.type!=="schedule") fields+=`<div class="field"><label>图片 URL（可选）</label><input id="f-image" value="${attr(d.image||'')}" placeholder="https://..."/></div>`;
   const overlay=document.createElement("div"); overlay.className="overlay";
   overlay.innerHTML=`<div class="modal"><h3>${editing?'编辑':'新建'} · ${m.name}</h3><div class="sub">${m.desc}</div>${fields}
-    <div class="modal-actions">${editing?'<button class="link-danger" id="m-del">删除</button>':''}<div class="spacer"></div>
+    <div class="modal-actions">${editing?`<button class="link-danger" id="m-del">${(m.type==="todo"&&d.goalId&&!(opts&&opts.gsrc))?"移出今日计划":"删除"}</button>`:''}<div class="spacer"></div>
       <button class="btn ghost" id="m-cancel">取消</button><button class="btn" id="m-save">保存</button></div></div>`;
   document.body.appendChild(overlay);
   const close=()=>overlay.remove();
   overlay.onclick=e=>{ if(e.target===overlay) close(); };
   overlay.querySelector("#m-cancel").onclick=close;
   overlay.querySelectorAll(".seg").forEach(seg=>seg.querySelectorAll(".opt").forEach(o=>o.onclick=()=>{ seg.querySelectorAll(".opt").forEach(x=>x.classList.remove("on")); o.classList.add("on"); }));
-  /* 今日计划：先选方向 → 可关联目标按方向过滤（任意层级都能关联）；只写 goalId，不新增字段 */
+  /* 今日计划：先选方向 → 可关联目标按方向过滤（任意层级都能关联）；关联只写 goalId，不影响 sched（是否进今日计划） */
   if(goalRef){
     const dirSeg=overlay.querySelector("#f-cf-direction");
     const weekSeg=overlay.querySelector("#f-cf-"+goalRef.key);
@@ -2801,7 +2833,12 @@ function openEditor(key,item,opts){
     overlay.querySelector("#f-rep").querySelectorAll(".opt").forEach(o=>o.addEventListener("click",()=>{ rep.kind=o.dataset.v; repaint(); }));
     repaint();
   }
-  if(editing) overlay.querySelector("#m-del").onclick=()=>{ close(); confirmDelete(key,d.id, (opts&&opts.dpop)?()=>openDayPopover(opts.dpop):null); };
+  if(editing) overlay.querySelector("#m-del").onclick=()=>{ close();
+    // 关联目标的任务从今日计划侧打开时，只移出不删除；真删除走目标树编辑器（gsrc 标记）
+    if(m.type==="todo"&&d.goalId&&!(opts&&opts.gsrc)){
+      d.sched=false; persist(); toast("已移出今日计划（任务保留在目标树）");
+      if(opts&&opts.dpop) openDayPopover(opts.dpop); return; }
+    confirmDelete(key,d.id, (opts&&opts.dpop)?()=>openDayPopover(opts.dpop):null); };
   overlay.querySelector("#m-save").onclick=()=>{
     const val=id=>{ const el=overlay.querySelector(id); return el?el.value:undefined; };
     const seg=id=>{ const el=overlay.querySelector(id+" .on"); return el?el.dataset.v:undefined; };
@@ -3138,14 +3175,15 @@ function tasksBlockHTML(node, indent){
   const rows=ts.map(t=>`<div class="gtask">
       <div class="chk ${todoDone(t)?'on':''}" data-gtaskchk="${t.id}">${icon("check",12,2.6)}</div>
       <span class="gt-name ${todoDone(t)?'done':''}" data-gtaskopen="${t.id}">${esc(t.title||"未命名")}</span>
-      ${isRepeat(t)?`<span class="gt-date">循环</span>`:(t.date?`<span class="gt-date">${esc(t.date)}</span>`:'')}</div>`).join("");
+      ${isRepeat(t)?`<span class="gt-date">循环</span>`:(t.date?`<span class="gt-date">${esc(t.date)}</span>`:'')}
+      <button class="gt-sched ${inPlan(t)?'on':''}" data-gtasksched="${t.id}" title="${inPlan(t)?'已在今日计划，点击移出':'安排到今日计划'}">${icon("calendar",12,2.2)}</button></div>`).join("");
   return `<div class="gtasks" style="margin-left:${indent}px">${sum}${rows}
-      <button class="gtask-add" data-gtaskadd="${node.id}">${icon("plus",13,2.4)}添加每日任务</button></div>`;
+      <button class="gtask-add" data-gtaskadd="${node.id}">${icon("plus",13,2.4)}添加执行任务</button></div>`;
 }
 function goalActs(node){
   return `<div class="gacts">
       <button data-gadd="${node.id}" title="加子目标">${icon("plus",15,2.2)}</button>
-      <button data-gtasknew="${node.id}" title="加每日任务">${icon("list",14)}</button>
+      <button data-gtasknew="${node.id}" title="加执行任务">${icon("list",14)}</button>
       <button data-gedit="${node.id}" title="编辑">${icon("pen",15,2)}</button>
       <button class="gdel" data-gdel="${node.id}" title="删除">${icon("trash",15)}</button></div>`;
 }
@@ -3171,7 +3209,7 @@ function goalNodeHTML(node, depth){
   const pad=depth*22;
   const caret=`<button class="gcar ${hasBody?'':'leaf'} ${open?'':'collapsed'}" data-gtoggle="${node.id}" data-gdepth="${depth}" title="${open?'折叠':'展开'}">${icon("chevron",14,2.2)}</button>`;
   const dl=node.deadline?`<span class="gdline">${esc(node.deadline)}</span>`:'';
-  /* 收起时也标出挂了几项每日任务，避免任务被折在深层看不见 */
+  /* 收起时也标出挂了几项执行任务，避免任务被折在深层看不见 */
   const tNum=tasksOf(node).length;
   const tnum=(!open&&tNum)?`<span class="gtnum">${tNum} 项任务</span>`:'';
   const pctHTML = mode==="check"
@@ -3252,7 +3290,13 @@ function wireGoal(){
   sc.querySelectorAll("[data-gtaskchk]").forEach(el=>el.onclick=e=>{ e.stopPropagation();
     const t=(data.todo||[]).find(x=>x.id==el.dataset.gtaskchk); if(!t) return;
     todoToggle(t); persist(); });
-  sc.querySelectorAll("[data-gtaskopen]").forEach(el=>el.onclick=()=>{ const t=(data.todo||[]).find(x=>x.id==el.dataset.gtaskopen); if(t) openEditor("todo",t); });
+  sc.querySelectorAll("[data-gtaskopen]").forEach(el=>el.onclick=()=>{ const t=(data.todo||[]).find(x=>x.id==el.dataset.gtaskopen); if(t) openEditor("todo",t,{gsrc:true}); });
+  // 安排 / 移出今日计划：只改 sched，不动完成状态，不影响目标进度
+  sc.querySelectorAll("[data-gtasksched]").forEach(el=>el.onclick=e=>{ e.stopPropagation();
+    const t=(data.todo||[]).find(x=>x.id==el.dataset.gtasksched); if(!t) return;
+    if(inPlan(t)){ t.sched=false; toast("已移出今日计划"); }
+    else { t.sched=true; toast("已安排到今日计划"); }
+    persist(); });
   sc.querySelectorAll("[data-gtaskadd]").forEach(el=>el.onclick=()=>{ const node=find(el.dataset.gtaskadd); if(node) addTask(node); });
   const nd=$("#g-new-dir"); if(nd) nd.onclick=()=>openGoalEditor(null,null);
   const ex=$("#g-expand"); if(ex) ex.onclick=()=>{
@@ -3338,7 +3382,7 @@ function goalDelConfirm(node){ if(!node) return;
   const linked=(data.todo||[]).filter(t=>t.goalId&&ids.has(String(t.goalId)));
   const doneN=linked.filter(t=>!isRepeat(t)&&t.done).length;
   const taskTip=linked.length
-    ? `它和子项关联的 ${linked.length} 项任务（其中 ${doneN} 项已完成）不会被删除：仍留在今日计划，只解除目标关联，完成状态和日期照旧。想删任务本身，请到今日计划单独删除。`
+    ? `它和子项关联的 ${linked.length} 项任务（其中 ${doneN} 项已完成）不会被删除：任务记录保留（是否显示在今日计划取决于各自的安排状态），只解除目标关联，完成状态和日期照旧。想删任务本身，请到目标树任务行打开编辑后删除。`
     : `它和子项下没有关联任务。`;
   const e=goalIndex()[node.id]; const parent=e?e.parentNode:null;
   let before=null, after=null;
@@ -3352,16 +3396,16 @@ function goalDelConfirm(node){ if(!node) return;
     const b=parent?nodePct(parent):null;
     const moved=goalRemove(node.id); persist();
     if(parent&&b!=null){ const a=nodePct(parent); if(a!==b) toast(`删除子目标后，上级进度 ${b}% → ${a}%`); }
-    if(moved) toast(`${moved} 项任务已保留在今日计划，仅解除目标关联`);
+    if(moved) toast(`${moved} 项任务已保留（仅解除目标关联，是否在今日计划取决于各自安排状态）`);
   });
 }
-/* 从任意目标节点「加每日任务」= 在今日计划里新建一条并关联过去 */
+/* 从任意目标节点「加执行任务」= 新建一条任务并关联过去；默认只属于目标树，不自动进今日计划 */
 function addTask(week, title){
-  const draft=newItem(modOf("todo")); draft.goalId=week.id; if(title) draft.title=title;
+  const draft=newItem(modOf("todo")); draft.goalId=week.id; draft.sched=false; if(title) draft.title=title;
   openEditor("todo", draft, { isNew:true });
 }
-/* 新建时选的层级标签：子目标只是默认名，可以一直往下拆；今日任务 = 保存到今日计划并关联当前节点 */
-const GOAL_PICK=[{k:"goal",n:"总目标"},{k:"stage",n:"阶段目标"},{k:"week",n:"子目标"},{k:"day",n:"今日任务"}];
+/* 新建时选的层级标签：子目标只是默认名，可以一直往下拆；执行任务 = 新建任务并关联当前节点（默认不进今日计划） */
+const GOAL_PICK=[{k:"goal",n:"总目标"},{k:"stage",n:"阶段目标"},{k:"week",n:"子目标"},{k:"day",n:"执行任务"}];
 /* 进度模式三选一：自动汇总 / 手动 / 完成状态；切换只换算法，历史记录不动 */
 function goalModeHTML(mode,d){
   if(mode==="manual") return `<div class="field"><label>当前进度（%）</label><input id="f-gman" type="number" min="0" max="100" value="${(d&&d.pMode==='manual'&&d.pManual!=null)?attr(d.pManual):''}" placeholder="填写实际完成到多少，0–100"/></div>`;
@@ -3397,7 +3441,7 @@ function goalFieldHTML(lvKey,d,node){
   return f;
 }
 function goalTip(lvKey){
-  if(lvKey==="week") return "子目标是阶段目标下面的通用拆解层，可以继续往下加，层数不限；进度默认 = 它下面「今日任务」的完成比例，也可以改成手动或完成状态。";
+  if(lvKey==="week") return "子目标是阶段目标下面的通用拆解层，可以继续往下加，层数不限；进度默认 = 它下面「执行任务」的完成比例，也可以改成手动或完成状态。执行任务默认不进今日计划，需要时再主动安排。";
   if(lvKey==="direction") return "方向是你长期推进的一条主线，进度默认由下面的目标自动汇总，也可以手动标进度。";
   return "这一层默认由下面的子项自动汇总；还没拆出内容时显示「尚未拆解」，不影响上级进度。";
 }
@@ -3446,7 +3490,7 @@ function openGoalEditor(node, parent){
     overlay.querySelectorAll("#f-glevel .opt").forEach(o=>o.onclick=()=>{
       const k=o.dataset.lv; if(k===lvKey) return;
       const cur=(overlay.querySelector("#f-gtitle")||{}).value||"";
-      if(k==="day"){ close(); addTask(parent, cur.trim()); return; }   // 今日任务直接进今日计划的任务表单
+      if(k==="day"){ close(); addTask(parent, cur.trim()); return; }   // 执行任务直接进任务表单（默认不进今日计划）
       lvKey=k;
       overlay.querySelectorAll("#f-glevel .opt").forEach(x=>x.classList.toggle("on",x.dataset.lv===k));
       overlay.querySelector("#f-gh").textContent=`新建 · ${GOAL_LV[k].name}`;
