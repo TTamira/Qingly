@@ -25,14 +25,17 @@ fn export_backup(
 }
 
 /* 切换 DevTools 窗口（F12 调用）。
-   Tauri 默认 release 构建会移除 devtools，需要 Cargo feature `devtools` 启用。 */
+   Tauri 默认 release 构建会移除 devtools，需要 Cargo feature `devtools` 启用。
+   关键：open_devtools() / is_devtools_open() 在 Webview 上，不是 WebviewWindow；
+   WebviewWindow 实现了 AsRef<Webview>，所以用 window.as_ref() 转换。 */
 #[tauri::command]
 fn toggle_devtools(app: tauri::AppHandle) -> Result<(), String> {
   if let Some(window) = app.get_webview_window("main") {
-    if window.is_devtools_open() {
-      window.close_devtools().map_err(|e| format!("关闭 DevTools 失败：{}", e))?;
+    let webview = window.as_ref();   // &Webview — WebviewWindow → Webview
+    if webview.is_devtools_open() {
+      webview.close_devtools();
     } else {
-      window.open_devtools().map_err(|e| format!("打开 DevTools 失败：{}", e))?;
+      webview.open_devtools();
     }
   }
   Ok(())
