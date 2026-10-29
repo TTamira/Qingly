@@ -3812,18 +3812,12 @@ function rdAutoNext(){ const doc=rd.docs[rd.cur]; if(!doc||rdCi>=doc.chapters.le
 
 /* 阅读页快捷键：← → 换章，↑ ↓ / 空格 翻页，翻到底自动跳下一章；Alt+Q 全局老板键 */
 document.addEventListener("keydown",e=>{
-  /* F12 切换 DevTools：通过 Rust 命令 toggle_devtools 实现（Tauri v2 发布版也生效，
-     依赖 Cargo.toml 的 devtools feature + lib.rs 的 toggle_devtools 命令）
-     注意：Windows 下也可以直接用 Ctrl+Shift+I（WebView2 原生快捷键） */
-  if(e.key==="F12"){ e.preventDefault();
+  /* Ctrl+Alt+I 切换 DevTools：通过 Rust 命令 toggle_devtools 实现
+     （不用 F12 / Ctrl+Shift+I，避免和 AMD 驱动、浏览器、VS Code 冲突） */
+  if(e.ctrlKey && e.altKey && (e.key==="i"||e.key==="I")){ e.preventDefault();
     const core = window.__TAURI__ && window.__TAURI__.core;
     if(core && typeof core.invoke==="function"){
-      core.invoke("toggle_devtools").catch(err=>{
-        console.warn("[F12] toggle_devtools 调用失败:", err);
-        console.warn("[F12] 也可以试试 Ctrl+Shift+I（WebView2 原生）");
-      });
-    } else {
-      console.log("[F12] 非 Tauri 环境，跳过");
+      core.invoke("toggle_devtools").catch(err=>{ console.warn("[Ctrl+Alt+I] DevTools 调用失败:", err); });
     }
     return; }
   if(e.altKey && (e.key==="q"||e.key==="Q")){ e.preventDefault(); toggleBoss(); return; }
