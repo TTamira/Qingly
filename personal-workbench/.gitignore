@@ -11,3 +11,8 @@ src-tauri/gen/schemas/
 
 # 本地备份
 *.bak_*
+
+# 私人数据脚本（含个人学习/目标规划，不入库）
+scripts/build_python_goal.py
+scripts/inject_python_goal.js
+scripts/__pycache__/

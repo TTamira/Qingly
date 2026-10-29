@@ -3738,6 +3738,17 @@ function rdAutoNext(){ const doc=rd.docs[rd.cur]; if(!doc||rdCi>=doc.chapters.le
 
 /* 阅读页快捷键：← → 换章，↑ ↓ / 空格 翻页，翻到底自动跳下一章；Alt+Q 全局老板键 */
 document.addEventListener("keydown",e=>{
+  /* F12 切换 DevTools：通过 Rust 命令 toggle_devtools 实现（Tauri v2 发布版也生效，
+     依赖 Cargo.toml 的 devtools feature + lib.rs 的 toggle_devtools 命令） */
+  if(e.key==="F12"){ e.preventDefault();
+    const core = window.__TAURI__ && window.__TAURI__.core;
+    if(core && typeof core.invoke==="function"){
+      core.invoke("toggle_devtools").catch(()=>{ /* 浏览器预览时静默忽略 */ });
+    } else {
+      /* 纯浏览器预览：调不出原生 DevTools，但至少不报错 */
+      console.log("[F12] 非 Tauri 环境，跳过");
+    }
+    return; }
   if(e.altKey && (e.key==="q"||e.key==="Q")){ e.preventDefault(); toggleBoss(); return; }
   if(e.altKey && (e.key==="w"||e.key==="W")){ e.preventDefault(); toggleMode(); return; }
   if(boss || view!=="docs") return;

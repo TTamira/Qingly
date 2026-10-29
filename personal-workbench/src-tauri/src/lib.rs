@@ -24,6 +24,20 @@ fn export_backup(
   }
 }
 
+/* 切换 DevTools 窗口（F12 调用）。
+   Tauri 默认 release 构建会移除 devtools，需要 Cargo feature `devtools` 启用。 */
+#[tauri::command]
+fn toggle_devtools(app: tauri::AppHandle) -> Result<(), String> {
+  if let Some(window) = app.get_webview_window("main") {
+    if window.is_devtools_open() {
+      window.close_devtools().map_err(|e| format!("关闭 DevTools 失败：{}", e))?;
+    } else {
+      window.open_devtools().map_err(|e| format!("打开 DevTools 失败：{}", e))?;
+    }
+  }
+  Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
@@ -38,7 +52,7 @@ pub fn run() {
       }
       Ok(())
     })
-    .invoke_handler(tauri::generate_handler![export_backup])
+    .invoke_handler(tauri::generate_handler![export_backup, toggle_devtools])
     .run(tauri::generate_context!())
     .expect("error while building tauri application");
 }
