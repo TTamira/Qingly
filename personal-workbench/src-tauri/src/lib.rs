@@ -1,3 +1,4 @@
+use tauri::Manager;
 use tauri_plugin_dialog::DialogExt;
 
 /* 导出备份：弹系统「另存为」对话框，把前端传来的 JSON 内容写入所选路径。
@@ -24,19 +25,18 @@ fn export_backup(
   }
 }
 
-/* 切换 DevTools 窗口（F12 调用）。
-   Tauri 默认 release 构建会移除 devtools，需要 Cargo feature `devtools` 启用。
-   关键：open_devtools() / is_devtools_open() 在 Webview 上，不是 WebviewWindow；
-   WebviewWindow 实现了 AsRef<Webview>，所以用 window.as_ref() 转换。 */
+/* 切换 DevTools 窗口（Ctrl+Alt+I 调用）。
+   Tauri 发布版默认移除 devtools，需要 Cargo.toml 里 tauri 的 `devtools` feature。
+   WebviewWindow 上直接有 open_devtools / close_devtools / is_devtools_open（2.12 已核对源码）。 */
 #[tauri::command]
 fn toggle_devtools(app: tauri::AppHandle) -> Result<(), String> {
-  if let Some(window) = app.get_webview_window("main") {
-    let webview = window.as_ref();   // &Webview — WebviewWindow → Webview
-    if webview.is_devtools_open() {
-      webview.close_devtools();
-    } else {
-      webview.open_devtools();
-    }
+  let Some(window) = app.get_webview_window("main") else {
+    return Err("找不到 main 窗口".into());
+  };
+  if window.is_devtools_open() {
+    window.close_devtools();
+  } else {
+    window.open_devtools();
   }
   Ok(())
 }
