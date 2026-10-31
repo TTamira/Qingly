@@ -1,6 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "qingxu",
+  "productName": "青序",
+  "mainBinaryName": "青序",
   "version": "0.2.0",
   "identifier": "com.qingxu.workbench",
   "build": {
