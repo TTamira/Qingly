@@ -1453,6 +1453,17 @@ if(_migrateResult.ok && !_migrateResult.skipped){
   try{ toast && toast("数据迁移失败，请联系开发者"); }catch(e){}
 }
 
+/* 一次性修复历史遗留的隐形孤儿任务：无 goalId 且 sched===false → 目标树和今日计划都看不到。
+   统一转入今日计划，兑现「删除目标节点不删任务」的承诺；只跑一次，用标记位避免重复处理。 */
+(function fixOrphanTasks(){
+  if(data.__orphanFixV1) return;
+  const orph=(data.todo||[]).filter(t=>!t.goalId && t.sched===false && !isRepeat(t));
+  orph.forEach(t=>{ t.sched=true; });
+  data.__orphanFixV1=true;
+  store.save();
+  if(orph.length) console.log(`孤儿任务修复：${orph.length} 条已转入今日计划`);
+})();
+
 /* ---------- 目标拆解（方向 → 总目标 → 阶段目标 → 子目标… → 执行任务） ----------
    目标树不绑定时间周期，层数不固定：任意节点都能继续加子目标，也可以逐步拆解。
    进度自下而上汇总：叶子节点 = 它下面「执行任务」的完成比例；
@@ -1609,13 +1620,18 @@ function weekOptions(dirId){
 function goalSubtreeIds(node){ const ids=[String(node.id)];
   const walk=ns=>(ns||[]).forEach(k=>{ ids.push(String(k.id)); walk(k.children); });
   walk(node.children); return ids; }
-/* 删除节点：只移除树结构；它和所有子项关联的任务一律保留在今日计划，仅解除关联 */
+/* 删除节点：只移除树结构；它和所有子项关联的任务一律保留，仅解除关联。
+   解绑后若任务原本未安排（sched===false）则自动转入今日计划，避免变成两处都看不到的隐形孤儿。 */
 function goalRemove(id){ const e=goalIndex()[id]; if(!e) return 0;
   const ids=new Set(goalSubtreeIds(e.node));
   if(e.parentNode) e.parentNode.children=(e.parentNode.children||[]).filter(c=>String(c.id)!==String(id));
   else data.goal=(data.goal||[]).filter(c=>String(c.id)!==String(id));
   let n=0;
-  (data.todo||[]).forEach(t=>{ if(t.goalId&&ids.has(String(t.goalId))){ t.goalId=""; n++; } });
+  (data.todo||[]).forEach(t=>{ if(t.goalId&&ids.has(String(t.goalId))){
+    t.goalId="";
+    if(!isRepeat(t)&&t.sched===false) t.sched=true;
+    n++;
+  } });
   return n;
 }
 function goalCount(){
