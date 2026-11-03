@@ -3405,15 +3405,22 @@ function wireGoal(){
     const src=find(srcId), dst=find(dstId);
     if(!src||!dst||src===dst) return;
     if(goalSubtreeIds(src).includes(String(dst.id))) return;    // 防环：不能拖进自己或自己的子孙
-    const eSrc=goalIndex()[src.id];
-    const arr=(eSrc&&eSrc.parentNode)?eSrc.parentNode.children:(data.goal||[]);
-    const i=arr.indexOf(src); if(i>=0) arr.splice(i,1);         // 从原父级摘出
-    dst.children=dst.children||[]; dst.children.push(src);      // 挂到目标末尾并展开
+    // 全局摘出：遍历整棵树从所有 children 中移除 src，避免原父级引用不一致导致残留/重复
+    let removed=false;
+    const rip=ns=>(ns||[]).forEach((n,idx,a)=>{ if(n===src){ a.splice(idx,1); removed=true; } else rip(n.children); });
+    rip(data.goal);
+    if(!removed){ console.warn("nestInto: 拖拽节点未在树中找到，仍尝试挂载", src.title); }
+    dst.children=dst.children||[]; dst.children.push(src);      // 挂到目标末尾
     // 按新深度修正层级标签（方向/总目标/阶段/子目标），进度在 render 时自下而上自动重算
     const relv=(n,d)=>{ n.lv=GOAL_LEVELS[Math.min(d,3)].key; (n.children||[]).forEach(k=>relv(k,d+1)); };
-    relv(src,(ix[dst.id]?ix[dst.id].path.length:0)+1);
-    data.__goalOpen=data.__goalOpen||{}; data.__goalOpen[dst.id]=true;
+    const dstDepth=goalChainOf(dst.id).length-1;                // dst 自身深度（方向=0）
+    relv(src, dstDepth+1);
+    // 展开目标及其所有祖先 + 被拖节点本身，确保移动后立即可见（之前只展开 dst，若 dst 藏在折叠父级下会"消失"）
+    data.__goalOpen=data.__goalOpen||{};
+    goalChainOf(dst.id).forEach(n=>{ data.__goalOpen[n.id]=true; });
+    data.__goalOpen[src.id]=true;
     persist();
+    toast(`已将「${src.title}」移到「${dst.title}」下`);
   };
 
   sc.querySelectorAll(".grow[data-grow]").forEach(el=>{
