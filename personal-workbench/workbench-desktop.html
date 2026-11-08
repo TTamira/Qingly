@@ -1634,6 +1634,56 @@ function goalRemove(id){ const e=goalIndex()[id]; if(!e) return 0;
   } });
   return n;
 }
+/* ---------- 层级调整：层级由深度推导；升级自动挂最近祖先，降级由用户选择父节点 ---------- */
+function goalDepthOf(node){ const ch=goalChainOf(node&&node.id); return ch.length?ch.length-1:0; }
+/* 目标深度 depth 的合法父节点：位于 depth-1 层、未归档、且不在被移动子树内 */
+function goalMoveCandidates(node,depth,excludeIds){
+  if(depth<=0) return [];
+  const sub=new Set((excludeIds||[]).map(String));
+  return Object.entries(goalIndex()).filter(([id,e])=>{
+    if(e.path.length!==depth-1) return false;
+    if(e.node.archived||sub.has(String(e.node.id))) return false;
+    return !goalHidden(e.node.id);
+  }).map(([id,e])=>({ id:e.node.id, label:e.path.concat([e.node.title]).join(" / ") }));
+}
+/* 把节点从原位置摘出，返回原父与下标（撤销用） */
+function goalDetach(node){
+  const e=goalIndex()[String(node.id)];
+  const parent=e?e.parentNode:null;
+  const arr=parent?(parent.children||[]):(data.goal||[]);
+  const index=arr.indexOf(node);
+  if(index>=0) arr.splice(index,1);
+  return { parent, arr, index };
+}
+function goalRelabel(node,depth){
+  node.lv=GOAL_LEVELS[Math.min(depth,GOAL_LEVELS.length-1)].key;
+  (node.children||[]).forEach(k=>goalRelabel(k,depth+1));
+}
+/* 移动节点（parent 为 null 表示顶层方向），返回撤销快照 */
+function goalMove(node,parent,depth){
+  const snap={ node, oldParent:null, oldIndex:-1, lvs:{}, open:Object.assign({},data.__goalOpen||{}) };
+  const e=goalIndex()[String(node.id)];
+  snap.oldParent=e?e.parentNode:null;
+  const oldArr=snap.oldParent?(snap.oldParent.children||[]):(data.goal||[]);
+  snap.oldIndex=oldArr.indexOf(node);
+  (function walk(n){ snap.lvs[n.id]=n.lv; (n.children||[]).forEach(walk); })(node);
+  goalDetach(node);
+  if(depth===0){ data.goal=data.goal||[]; data.goal.push(node); }
+  else { parent.children=parent.children||[]; parent.children.push(node); }
+  goalRelabel(node,depth);
+  data.__goalOpen=data.__goalOpen||{};
+  if(parent) goalChainOf(parent.id).forEach(n=>{ data.__goalOpen[n.id]=true; });
+  data.__goalOpen[node.id]=true;
+  return snap;
+}
+function goalMoveUndo(snap){
+  goalDetach(snap.node);
+  const arr=snap.oldParent?(snap.oldParent.children=snap.oldParent.children||[]):(data.goal=data.goal||[]);
+  arr.splice(Math.max(0,Math.min(snap.oldIndex,arr.length)),0,snap.node);
+  (function walk(n){ if(snap.lvs[n.id]!=null) n.lv=snap.lvs[n.id]; (n.children||[]).forEach(walk); })(snap.node);
+  data.__goalOpen=snap.open||{};
+  persist();
+}
 function goalCount(){
   const n={ direction:0, goal:0, stage:0, week:0,
             task:(data.todo||[]).filter(t=>t.goalId&&!goalHidden(t.goalId)&&!isRepeat(t)).length };   // 归档子树与循环打卡不计入「关联任务」
@@ -3011,6 +3061,16 @@ function confirmDelete(key,id,after){ const item=(data[key]||[]).find(i=>i.id==i
 /* ---------- 轻提示 / 通用确认 ---------- */
 function toast(msg){ const el=document.createElement("div"); el.className="toast"; el.textContent=msg;
   document.body.appendChild(el); setTimeout(()=>el.remove(),2400); }
+/* 带一次撤销机会的提示（刷新即失效） */
+function toastUndo(msg,onUndo){
+  const el=document.createElement("div"); el.className="toast";
+  el.innerHTML=`<span>${esc(msg)}</span><button id="toast-undo" style="margin-left:10px;background:transparent;border:1px solid currentColor;color:inherit;border-radius:8px;padding:2px 8px;font:inherit;cursor:pointer">撤销</button>`;
+  document.body.appendChild(el);
+  const timer=setTimeout(()=>el.remove(),8000);
+  let fired=false;
+  el.querySelector("#toast-undo").onclick=()=>{ if(fired) return; fired=true;
+    clearTimeout(timer); el.remove(); onUndo(); toast("已撤销层级调整"); };
+}
 function askConfirm(title,sub,okLabel,onOk){
   const overlay=document.createElement("div"); overlay.className="overlay";
   overlay.innerHTML=`<div class="modal" style="width:430px"><h3>${esc(title)}</h3><div class="sub">${esc(sub)}</div>
@@ -3549,11 +3609,17 @@ function openGoalEditor(node, parent){
   const d=node||{ lv:lvKey, title:"", stage:"", week:"", deadline:"", children:[] };
   let mode=d.pMode||"auto";
   const pickable=!editing&&!!parent;   // 有父节点时才让选层级；新建方向固定顶层
+  let moveLv=null, moveDepth=null, moveParentId=null, moveCandidates=[], movePending=false;
+  const curDepth=editing?goalDepthOf(d):0;
   const overlay=document.createElement("div"); overlay.className="overlay";
   overlay.innerHTML=`<div class="modal" style="width:460px"><h3 id="f-gh">${editing?'编辑':'新建'} · ${GOAL_LV[lvKey].name}</h3>
     ${pickable?`<div class="field"><label>建在哪一层</label><div class="seg" id="f-glevel">${GOAL_PICK.map(o=>`<div class="opt ${o.k===lvKey?'on':''}" data-lv="${o.k}">${o.n}</div>`).join("")}</div></div>`:''}
     <div class="sub" id="f-gtip">${goalTip(lvKey)}</div>
     <div id="f-gfields">${goalFieldHTML(lvKey,d,node)}</div>
+    ${editing?`<div class="field"><label>调整层级（当前：${GOAL_LV[lvKey].name}）</label>
+      <div class="seg" id="f-gmlv">${GOAL_LEVELS.map(l=>`<div class="opt ${l.key===lvKey?'on':''}" data-mlv="${l.key}">${l.name}</div>`).join("")}</div>
+      <div class="gmhint" id="f-gmhint">选择目标层级；升级自动挂到上级，降级由你选择父节点。</div>
+      <div id="f-gmparent"></div></div>`:''}
     <div class="modal-actions">${editing?`<button class="link-quiet" id="m-arc">归档</button><button class="link-danger" id="m-del">删除</button>`:''}<div class="spacer"></div>
       <button class="btn ghost" id="m-cancel">取消</button><button class="btn" id="m-save">保存</button></div></div>`;
   document.body.appendChild(overlay);
@@ -3583,6 +3649,46 @@ function openGoalEditor(node, parent){
     bindCheck();
   };
   bindMode();
+  const moveHint=t=>{ const h=overlay.querySelector("#f-gmhint"); if(h) h.textContent=t; };
+  const renderMoveParents=()=>{
+    const wrap=overlay.querySelector("#f-gmparent"); if(!wrap) return;
+    if(!movePending){ wrap.innerHTML=""; moveHint(`当前：${GOAL_LV[lvKey].name}。选择目标层级可调整。`); return; }
+    if(moveDepth<=0){ wrap.innerHTML=""; moveHint(`保存后移到顶层，成为「${GOAL_LV[moveLv].name}」。`); return; }
+    if(!moveCandidates.length){
+      const par=moveParentId?goalFind(moveParentId):null;
+      wrap.innerHTML="";
+      moveHint(par?`保存后自动挂到「${par.title}」，成为「${GOAL_LV[moveLv].name}」。`:`保存后移到顶层，成为「${GOAL_LV[moveLv].name}」。`);
+      return;
+    }
+    wrap.innerHTML=`<div class="field"><label>选择新的父节点（${GOAL_LEVELS[moveDepth-1].name}）</label>
+      <select id="f-gmparent-sel"><option value="">请选择父节点…</option>${moveCandidates.map(c=>`<option value="${c.id}">${esc(c.label)}</option>`).join("")}</select></div>`;
+    wrap.querySelector("#f-gmparent-sel").onchange=e=>{ moveParentId=e.target.value?String(e.target.value):null; };
+    moveHint(`保存后移到「${GOAL_LV[moveLv].name}」，父节点由你选择。`);
+  };
+  if(editing){
+    overlay.querySelectorAll("#f-gmlv .opt").forEach(o=>o.onclick=()=>{
+      const k=o.dataset.mlv;
+      overlay.querySelectorAll("#f-gmlv .opt").forEach(x=>x.classList.toggle("on",x.dataset.mlv===k));
+      moveParentId=null; moveCandidates=[]; movePending=false;
+      if(k===d.lv){ moveLv=null; moveDepth=null; renderMoveParents(); return; }
+      const td=GOAL_LEVELS.findIndex(l=>l.key===k);
+      if(td<curDepth){                                  // 升级：自动挂最近的合法祖先（不跳级）
+        const chain=goalChainOf(d.id); const par=td>0?chain[td-1]:null;
+        if(td===0){ moveDepth=0; moveLv="direction"; }
+        else if(par){ moveDepth=td; moveLv=k; moveParentId=String(par.id); moveCandidates=[]; }
+        else { moveDepth=1; moveLv="goal";
+          const dir=chain[0]; if(dir) moveParentId=String(dir.id);
+          moveCandidates=[]; }
+        movePending=true; renderMoveParents(); return;
+      }
+      if(td===curDepth){ moveLv=null; moveDepth=null; renderMoveParents(); return; }
+      let dd=td;                                         // 降级：必须由用户选择父节点
+      while(dd>curDepth){ const c=goalMoveCandidates(d,dd,goalSubtreeIds(d)); if(c.length){ moveCandidates=c; break; } dd--; }
+      if(!moveCandidates.length){ moveLv=null; moveDepth=null;
+        toast(`当前没有可作为父节点的「${GOAL_LEVELS[td-1].name}」，保持原层级`); renderMoveParents(); return; }
+      moveDepth=dd; moveLv=GOAL_LEVELS[dd].key; movePending=true; renderMoveParents();
+    });
+  }
   if(pickable){
     overlay.querySelectorAll("#f-glevel .opt").forEach(o=>o.onclick=()=>{
       const k=o.dataset.lv; if(k===lvKey) return;
@@ -3598,6 +3704,7 @@ function openGoalEditor(node, parent){
     });
   }
   overlay.querySelector("#m-save").onclick=()=>{
+    if(!overlay.isConnected) return;   // 防连点：保存后弹窗已移除，忽略后续点击
     const val=id=>{ const el=overlay.querySelector(id); return el?el.value:""; };
     const title=(val("#f-gtitle")||"").trim(); if(!title){ toast("先写个名称"); return; }
     let man=null;
@@ -3607,7 +3714,7 @@ function openGoalEditor(node, parent){
       man=Math.round(num);
     }
     const prevMode=editing?(d.pMode||"auto"):null;
-    let notice="";
+    let notice="", movedSnap=null;
     if(!editing){
       const nn={ id:Date.now(), lv:lvKey, title, children:[] };
       if(lvKey==="direction"){ nn.stage=(val("#f-gstage")||"").trim(); nn.week=(val("#f-gweek")||"").trim(); }
@@ -3634,9 +3741,25 @@ function openGoalEditor(node, parent){
         else if(mode==="check") notice=`已切换为完成状态：${d.pDone?'已完成':'未完成'}。`;
         else notice=`已切换为子目标自动汇总，当前 ${nodePct(d)}%`+(prevMode==="manual"?"；原手动百分比保留在数据里，不重复累计。":"。");
       }
+      if(movePending){
+        if(moveDepth>0 && !moveParentId){ toast("请先选择新的父节点"); return; }
+        const newParent=moveDepth>0?goalFind(moveParentId):null;
+        if(moveDepth>0 && !newParent){ toast("父节点不存在，未移动"); return; }
+        const oldParent=goalIndex()[String(d.id)]?goalIndex()[String(d.id)].parentNode:null;
+        const beforeOld=oldParent?nodePct(oldParent):goalAvg(data.goal||[]).value;
+        const beforeNew=newParent?nodePct(newParent):null;
+        movedSnap=goalMove(d,newParent,moveDepth);
+        const afterOld=oldParent?nodePct(oldParent):goalAvg(data.goal||[]).value;
+        const afterNew=newParent?nodePct(newParent):null;
+        let mv=`已移到「${GOAL_LEVELS[moveDepth].name}」`;
+        if(oldParent&&beforeOld!==afterOld) mv+=`；「${oldParent.title}」进度 ${beforeOld}% → ${afterOld}%`;
+        if(newParent&&beforeNew!==afterNew) mv+=`；「${newParent.title}」进度 ${beforeNew}% → ${afterNew}%`;
+        notice=notice?notice+" "+mv:mv;
+      }
     }
     persist(); close();
-    if(notice) toast(notice);
+    if(movedSnap) toastUndo(notice,()=>goalMoveUndo(movedSnap));
+    else if(notice) toast(notice);
   };
   setTimeout(()=>{ const el=overlay.querySelector("#f-gtitle"); if(el) el.focus(); },30);
 }
