@@ -954,6 +954,53 @@
   .grow .gdecomp:hover { background:var(--accent-muted); }
   .gm { font-size:12.5px; color:var(--text-secondary); line-height:1.7; background:var(--surface-nested); border-radius:10px; padding:9px 11px; }
   .gmhint { font-size:12px; color:var(--text-tertiary); line-height:1.6; margin-top:2px; }
+  /* 选择父节点：自绘列表（搜索 + 分组 + 层级缩进），替代原生 select */
+  .gmp-wrap { border:1px solid var(--border-input); border-radius:var(--radius-tile); background:var(--surface-card); overflow:hidden; }
+  .gmp-search { padding:8px; border-bottom:1px solid var(--border); background:var(--surface-card); }
+  .gmp-search input { width:100%; box-sizing:border-box; padding:8px 11px; font-size:13px; }
+  .gmp-list { max-height:240px; overflow-y:auto; padding:6px; }
+  .gmp-grp { font-size:11px; font-weight:800; letter-spacing:.05em; color:var(--text-tertiary); padding:8px 8px 4px; }
+  .gmp-row { display:flex; align-items:center; gap:8px; min-height:40px; padding:8px 10px; border-radius:10px;
+    border:1px solid transparent; cursor:pointer; transition:background .12s, border-color .12s; }
+  .gmp-row:hover { background:var(--accent-muted); }
+  .gmp-row.on { background:var(--accent-muted); border-color:var(--accent); }
+  .gmp-row .gmp-ind { width:3px; align-self:stretch; border-radius:2px; background:var(--border); flex:0 0 auto; }
+  .gmp-row.on .gmp-ind { background:var(--accent); }
+  .gmp-row .glv { font-size:10.5px; font-weight:800; letter-spacing:.05em; padding:2px 7px; border-radius:999px; flex:0 0 auto; }
+  .gmp-row .gmp-t { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+  .gmp-row .gmp-title { font-size:13px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .gmp-row .gmp-up { font-size:11px; color:var(--text-secondary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .gmp-row .gmp-chk { width:14px; flex:0 0 auto; text-align:center; color:var(--accent); font-weight:800; opacity:0; }
+  .gmp-row.on .gmp-chk { opacity:1; }
+  .gmp-row.dis { cursor:not-allowed; opacity:.55; }
+  .gmp-row.dis:hover { background:transparent; }
+  .gmp-row.dis .gmp-title { color:var(--text-tertiary); }
+  .gmp-auto { display:flex; align-items:center; gap:8px; padding:10px 12px; border:1px solid var(--border);
+    border-radius:var(--radius-tile); background:var(--surface-nested); font-size:13px; color:var(--text-secondary); }
+  .gmp-auto .glv { font-size:10.5px; font-weight:800; letter-spacing:.05em; padding:2px 7px; border-radius:999px; flex:0 0 auto; }
+  .gmp-empty { border:1px dashed var(--border-input); border-radius:var(--radius-tile); padding:14px 12px;
+    text-align:center; font-size:12.5px; line-height:1.6; color:var(--text-tertiary); background:var(--surface-nested); }
+  /* 关联目标 / 选父节点：表单里只留只读摘要，点按钮开独立选择弹窗 */
+  .gref { display:flex; align-items:center; gap:10px; padding:7px 8px 7px 12px; border:1px solid var(--border-input);
+    border-radius:var(--radius-tile); background:var(--surface-nested); }
+  .gref .gref-path { flex:1; min-width:0; font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .gref .gref-path.muted { color:var(--text-tertiary); }
+  .gref .btn { padding:6px 12px; font-size:12.5px; }
+  .gpick-modal { width:520px; height:65vh; max-height:82vh; overflow:hidden; display:flex; flex-direction:column; }
+  .gpick-modal .gmp-wrap { display:flex; flex-direction:column; flex:1; min-height:0; }
+  .gpick-modal .gmp-search { flex:0 0 auto; }
+  .gpick-modal .gmp-list { flex:1; max-height:none; min-height:0; }
+  .gpick-modal .gmp-row { min-height:44px; padding-top:0; padding-bottom:0; padding-left:10px; }
+  .gpick-modal .modal-actions { margin-top:14px; flex:0 0 auto; }
+  .gmp-crumb { display:flex; flex-wrap:wrap; align-items:center; gap:2px; font-size:12px; color:var(--text-tertiary); margin:-6px 0 8px; min-height:20px; }
+  .gmp-crumb button { background:none; border:none; padding:2px 5px; border-radius:6px; font:inherit; color:var(--accent); cursor:pointer; }
+  .gmp-crumb button:hover { background:var(--accent-muted); }
+  .gmp-crumb .sep { opacity:.55; }
+  .gp-cur { font-size:12.5px; color:var(--text-secondary); margin:0 0 8px; padding:7px 10px; border-radius:9px;
+    border:1px solid var(--border); background:var(--surface-nested); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .gmp-go { width:20px; flex:0 0 auto; text-align:center; color:var(--text-tertiary); font-size:17px; line-height:1; border-radius:6px; }
+  .gmp-go:hover { color:var(--accent); background:var(--accent-muted); }
+  .gpick-modal .link-quiet.on { background:var(--accent-muted); color:var(--accent); }
   .link-quiet { color:var(--text-secondary); background:none; border:none; font-size:14px; font-weight:600;
     cursor:pointer; padding:8px 10px; border-radius:8px; }
   .link-quiet:hover { background:var(--surface-nested); color:var(--text); }
@@ -1040,6 +1087,21 @@
   .crop-zoom input { flex:1; accent-color:var(--accent); }
   .sthint { font-size:13px; color:var(--text-tertiary); }
 
+  /* 统一选图组件：预览 + 本地选择 / 网络地址（高级）/ 清除 */
+  .imgpick { display:flex; flex-direction:column; gap:10px; }
+  .imgpick-box { position:relative; width:100%; height:150px; border-radius:12px; overflow:hidden; cursor:default;
+    border:1px dashed var(--border-input); background:var(--surface-nested); display:grid; place-items:center; }
+  .imgpick-box.has-img { border-style:solid; }
+  .imgpick-img { width:100%; height:100%; object-fit:cover; display:block; }
+  .imgpick-empty { font-size:12.5px; color:var(--text-tertiary); }
+  .imgpick-bar { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .imgpick-url { display:flex; align-items:center; gap:8px; }
+  .imgpick-url[hidden] { display:none; }
+  .imgpick-url input { flex:1; min-width:0; }
+  .imgpick-meta { font-size:11.5px; color:var(--text-tertiary); font-variant-numeric:tabular-nums; }
+  /* 列表缩略图 / 大图卡片：加载失败时用占位图，不显示破图 */
+  .rec .thumb.ph { object-fit:contain; background:var(--surface-nested); padding:4px; }
+
   /* ---------- AI 复盘 ---------- */
   .ai-digest { width:100%; height:360px; resize:vertical; margin-top:14px; padding:13px 15px; border-radius:12px;
     border:1px solid var(--border-input); background:var(--surface-nested); color:var(--text);
@@ -1065,7 +1127,6 @@
   <aside class="sidebar">
     <div class="brand">
       <div class="ava" id="ava" title="点击更换头像"><span class="ini" id="avaIni" style="position:absolute;inset:0;display:grid;place-items:center;font-size:19px;font-weight:800;color:var(--drawer-text)">我</span><img id="avaImg" alt="头像" style="display:none"/><span class="cam" id="avaCam"></span></div>
-      <input type="file" id="avatarInput" accept="image/*" hidden/>
       <div class="btext" id="brandEdit" title="点击修改称呼 / 签名"><h1 id="brandName">我的工作台 <span class="pen" id="brandPen"></span></h1><p id="brandSlogan">Personal Workbench</p></div>
     </div>
     <nav class="nav" id="nav"></nav>
@@ -1337,9 +1398,17 @@ const store = {
     });
     // 配置项（__theme 等）也进主桶
     ["__theme","__homeLayout","__owner","__slogan","__mode","__status","eye","eyeCfg","__avatar","__schemaVersion"].forEach(k=>{ if(k in data) work[k]=data[k]; });
-    try{ localStorage.setItem(CONFIG.storageKey, JSON.stringify(work)); }catch(e){}
-    try{ localStorage.setItem(PRIVATE_KEY, JSON.stringify(priv)); }catch(e){}
-    try{ localStorage.setItem(LOCAL_KEY,   JSON.stringify(local)); }catch(e){}
+    const fails=[];
+    const put=(k,v)=>{ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){ fails.push({k,e}); } };
+    put(CONFIG.storageKey, work); put(PRIVATE_KEY, priv); put(LOCAL_KEY, local);
+    if(fails.length){
+      // 配额写满是数据丢失风险最高的场景，必须明确告知，不能静默
+      const quota=fails.some(f=>{ const e=f.e||{}; return e.name==="QuotaExceededError"||e.name==="NS_ERROR_DOM_QUOTA_REACHED"||e.code===22||e.code===1014; });
+      try{ console.error("[store.save] 写入失败", fails.map(f=>f.k+": "+(f.e&&f.e.message||f.e))); }catch(_e){}
+      try{ if(typeof toast==="function") toast(quota?"存储空间不足，本次修改未保存":"保存失败，本次修改未保存"); }catch(_e){}
+      return false;
+    }
+    return true;
   },
 
   /* —— 渐进式改造：新代码用 get/set，老代码先不动 —— */
@@ -1614,6 +1683,8 @@ function weekOptions(dirId){
   return Object.entries(goalIndex()).filter(([id,e])=>e.node.lv!=="direction"&&!goalHidden(e.node.id))
     .map(([id,e])=>{ const chain=goalChainOf(e.node.id);
       return { id:+id, label:e.path.concat([e.node.title]).join(" / "), short:e.node.title,
+               title:e.node.title, depth:e.path.length, path:e.path.slice(),
+               root:e.path.length?e.path[0]:"顶层",
                dirId:chain.length?chain[0].id:null }; })
     .filter(o=>!dir||String(o.dirId)===dir); }
 /* 节点整棵子树的 id（含自身）：删除时用来解除所有层级的任务关联 */
@@ -1636,15 +1707,117 @@ function goalRemove(id){ const e=goalIndex()[id]; if(!e) return 0;
 }
 /* ---------- 层级调整：层级由深度推导；升级自动挂最近祖先，降级由用户选择父节点 ---------- */
 function goalDepthOf(node){ const ch=goalChainOf(node&&node.id); return ch.length?ch.length-1:0; }
-/* 目标深度 depth 的合法父节点：位于 depth-1 层、未归档、且不在被移动子树内 */
-function goalMoveCandidates(node,depth,excludeIds){
+/* 目标深度 depth 的合法父节点：位于 depth-1 层、未归档、且不在被移动子树内
+   withArchived=true 仅用于选择列表展示（归档项以禁用态出现），不参与合法性判定 */
+function goalMoveCandidates(node,depth,excludeIds,withArchived){
   if(depth<=0) return [];
   const sub=new Set((excludeIds||[]).map(String));
   return Object.entries(goalIndex()).filter(([id,e])=>{
     if(e.path.length!==depth-1) return false;
-    if(e.node.archived||sub.has(String(e.node.id))) return false;
+    if(e.node.archived&&!withArchived) return false;
+    if(sub.has(String(e.node.id))) return false;
+    if(withArchived){ const ch=goalChainOf(e.node.id); return ch.length&&!ch.slice(0,-1).some(n=>n.archived); }
     return !goalHidden(e.node.id);
-  }).map(([id,e])=>({ id:e.node.id, label:e.path.concat([e.node.title]).join(" / ") }));
+  }).map(([id,e])=>({ id:e.node.id, label:e.path.concat([e.node.title]).join(" / "),
+    title:e.node.title, depth:e.path.length, path:e.path.slice(),
+    root:e.path.length?e.path[0]:"顶层", archived:!!e.node.archived }));
+}
+/* 目标路径（方向 › 总目标 › …），摘要与弹窗共用 */
+function goalPathOf(id){ const ch=goalChainOf(+id); return ch.length?ch.map(n=>n.title||"未命名").join(" › "):""; }
+/* 公共目标选择弹窗（逐级下钻）：第一屏方向（只作筛选，不可选）→ 总目标 → 阶段 → 子目标。
+   点行 = 选中该节点，点行尾 › = 进入下一级；面包屑可回退。两段式：点选只改高亮，「确定」才回调。
+   样式与「选父节点」共用；「取消」只关闭弹窗，是否顺带解绑由调用方通过 onCancel 决定。 */
+function openGoalPicker(opts){
+  const items=(opts.items||[]).slice();
+  const lvOf=d=>GOAL_LEVELS[Math.min(Math.max(d,0),GOAL_LEVELS.length-1)];
+  let sel=(opts.value==null||opts.value==="")?"":String(opts.value);
+  /* 用候选的祖先标题拼出下钻树；没有候选的中间层也生成（只导航，不可选） */
+  const root={ title:"", depth:-1, children:[], item:null };
+  const kidOf=(n,t)=>n.children.find(k=>k.title===t);
+  items.forEach(c=>{
+    let cur=root;
+    (c.path||[]).forEach(t=>{
+      let k=kidOf(cur,t);
+      if(!k){ k={ title:t, depth:cur.depth+1, children:[], item:null }; cur.children.push(k); }
+      cur=k;
+    });
+    let self=kidOf(cur,c.title);
+    if(!self){ self={ title:c.title, depth:(c.path||[]).length, children:[], item:null }; cur.children.push(self); }
+    self.item=c;
+  });
+  const navOf=id=>{
+    let cur=root; const chain=[root];
+    const it=items.find(c=>String(c.id)===String(id)); if(!it) return null;
+    for(const t of (it.path||[])){ const k=kidOf(cur,t); if(!k) return null; cur=k; chain.push(k); }
+    return { chain, self:kidOf(cur,it.title) };
+  };
+  let stack=[root], curKids=[];
+  const loc=sel?navOf(sel):null;
+  if(loc) stack=loc.chain;               // 定位到父级那一屏，节点在其中高亮
+  const overlay=document.createElement("div"); overlay.className="overlay";
+  overlay.innerHTML=`<div class="modal gpick-modal"><h3>${esc(opts.title||"选择目标")}</h3>
+    <div class="sub">${esc(opts.sub||"选好后点「确定」生效")}</div>
+    <div class="gmp-crumb" id="gp-crumb"></div>
+    <div class="gp-cur" id="gp-cur"></div>
+    <div class="gmp-wrap"><div class="gmp-search"><input class="gmp-q" placeholder="${attr(opts.placeholder||"搜索目标…")}" autocomplete="off"/></div>
+      <div class="gmp-list"></div></div>
+    <div class="modal-actions"><div class="spacer"></div>
+      <button class="btn ghost" id="gp-cancel">取消</button><button class="btn" id="gp-ok">确定</button></div></div>`;
+  document.body.appendChild(overlay);
+  const list=overlay.querySelector(".gmp-list"), q=overlay.querySelector(".gmp-q");
+  const crumb=overlay.querySelector("#gp-crumb"), curEl=overlay.querySelector("#gp-cur");
+  const draw=kw=>{
+    const here=stack[stack.length-1], k=(kw||"").trim().toLowerCase();
+    curKids=here.children.filter(n=>!k||String(n.title).toLowerCase().includes(k));   // 只过滤当前层级
+    crumb.innerHTML=stack.length>1
+      ? `<button data-crumb="0">全部方向</button>`+stack.slice(1).map((n,i)=>`<span class="sep">›</span><button data-crumb="${i+1}">${esc(n.title)}</button>`).join("")
+      : `<span>全部方向</span>`;
+    let html="";
+    if(!curKids.length) html+=`<div class="gmp-empty">${esc(k?"没有匹配的目标":(opts.emptyText||"这里还没有目标"))}</div>`;
+    curKids.forEach((n,i)=>{
+      const it=n.item, dis=it&&it.disabled, on=!!it&&!dis&&String(it.id)===sel;
+      const lv=lvOf(n.depth);
+      html+=`<div class="gmp-row${on?" on":""}${dis?" dis":""}" data-i="${i}"${it?` data-v="${it.id}"`:""} role="option" aria-selected="${on}">
+        <span class="gmp-ind"></span><span class="glv" style="color:${lv.color};background:${lv.tint}">${lv.name}</span>
+        <span class="gmp-t"><span class="gmp-title">${esc(n.title)}</span></span>
+        ${dis?`<span class="gmp-up">${esc(dis)}</span>`:(n.children.length?`<span class="gmp-go" data-go="1" title="进入下一级">›</span>`:`<span class="gmp-chk">✓</span>`)}
+      </div>`;
+    });
+    list.innerHTML=html; list.scrollTop=0;
+  };
+  const paint=()=>{
+    list.querySelectorAll(".gmp-row").forEach(r=>{
+      const on=!r.classList.contains("dis")&&r.dataset.v!=null&&String(r.dataset.v)===sel;
+      r.classList.toggle("on",on); r.setAttribute("aria-selected",on);
+    });
+    curEl.textContent=sel?("已选："+goalPathOf(sel)):("已选："+(opts.noneText||"未关联"));
+  };
+  const openLevel=n=>{ stack.push(n); q.value=""; draw(""); paint(); q.focus(); };
+  draw(""); paint();
+  q.oninput=e=>{ draw(e.target.value); paint(); };
+  list.onclick=e=>{
+    const row=e.target.closest(".gmp-row"); if(!row) return;
+    const node=curKids[+row.dataset.i]; if(!node) return;
+    if(e.target.closest("[data-go]")){ if(node.children.length) openLevel(node); return; }
+    if(row.classList.contains("dis")) return;
+    if(node.item){ sel=String(node.item.id); paint(); return; }    // 只改高亮，等「确定」才回写
+    if(node.children.length) openLevel(node);                        // 方向等中间层：点击即进入
+  };
+  crumb.onclick=e=>{
+    const b=e.target.closest("[data-crumb]"); if(!b) return;
+    const i=+b.dataset.crumb;
+    if(i>=0&&i<stack.length){ stack=stack.slice(0,i+1); q.value=""; draw(""); paint(); q.focus(); }
+  };
+  overlay.onclick=e=>{ if(e.target===overlay) overlay.remove(); };   // 点遮罩：不改动
+  overlay.querySelector("#gp-cancel").onclick=()=>{ overlay.remove(); if(opts.onCancel) opts.onCancel(); };
+  overlay.querySelector("#gp-ok").onclick=()=>{
+    if(!overlay.isConnected) return;   // 防连点：确定后弹窗已移除，忽略后续点击
+    overlay.remove();
+    if(opts.onConfirm) opts.onConfirm(sel);
+  };
+  const rowSel=list.querySelector(".gmp-row.on");
+  if(rowSel) rowSel.scrollIntoView({block:"center"});
+  setTimeout(()=>q.focus(),30);
 }
 /* 把节点从原位置摘出，返回原父与下标（撤销用） */
 function goalDetach(node){
@@ -1725,7 +1898,7 @@ let bossPrev = "home";       // 恢复时回到哪个页面
 let clockTimer = null;       // 全局秒级心跳（首页时钟）
 let calYM = null;            // 首页日历当前显示的年月（null = 跟随本月）
 let calSelected = null;      // 首页日历当前选中的日期（ISO 格式，null = 无）
-function persist(){ store.save(); render(); }
+function persist(){ const ok=store.save(); render(); return ok; }
 function pad2(n){ return String(n).padStart(2,"0"); }
 
 /* 当前是第几周（用于首页问候卡） */
@@ -2081,7 +2254,7 @@ function openEyeSettings(){
     cfg.break=cl(overlay.querySelector("#e-break").value,1,60,15);
     cfg.auto=overlay.querySelector("#e-auto").checked;
     cfg.sound=overlay.querySelector("#e-sound").checked;
-    persist(); close(); toast("设置已保存");
+    const ok=persist(); close(); if(ok) toast("设置已保存");
   };
 }
 
@@ -2734,7 +2907,7 @@ function recHTML(m,x){
     : `<button class="del js-del" data-id="${x.id}" title="删除">${icon("trash",15)}</button>`;
   const acts=`<div class="acts">${pin}${del}</div>`;
   const chkMark=icon("check",13,2.4);
-  const thumb=x.image?`<img class="thumb" src="${attr(x.image)}" alt="">`:'';
+  const thumb=x.image?`<img class="thumb" src="${attr(x.image)}" alt="" onerror="this.onerror=null;this.src='${IMG_PH}';this.classList.add('ph')">`:'';
   const customMeta=(m.fields||[]).filter(f=>x[f.key]&&f.type!=="goalref").map(f=>`<span class="meta-tag">${esc(x[f.key])}</span>`).join("");
   const customBlock=customMeta?`<div class="meta-line">${customMeta}</div>`:'';
   const layout=x.layout||'default';
@@ -2891,24 +3064,33 @@ function openEditor(key,item,opts){
   (m.fields||[]).forEach(f=>{
     const v=d[f.key]||"";
     if(f.type==="goalref"){
-      const chain=goalChainOf(v);
-      const curDir=chain.length?String(chain[0].id):"";
-      const dirs=(data.goal||[]).filter(n=>!n.archived);
-      goalRef={ key:f.key, allWeeks:weekOptions(), curDir, curV:v };
-      fields+=`<div class="field"><label>关联方向（可选）</label><div class="seg" id="f-cf-direction">`+
-        `<div class="opt ${curDir?'':'on'}" data-v="" style="flex:0 0 auto;min-width:auto">不选方向</div>`+
-        (dirs.length?dirs.map(n=>`<div class="opt ${curDir===String(n.id)?'on':''}" data-v="${n.id}" style="flex:0 0 auto;min-width:auto">${esc(n.title||"未命名")}</div>`).join("")
-          :`<span style="font-size:12px;color:var(--text-tertiary);align-self:center">还没有方向，先去「目标拆解」建一个</span>`)+
-        `</div></div>`;
-      fields+=`<div class="field"><label>${esc(f.label)}（可选）</label><div class="seg" id="f-cf-${f.key}"></div></div>`;
+      const gpath=v?goalPathOf(v):"";
+      goalRef={ key:f.key, allWeeks:weekOptions() };
+      fields+=`<div class="field"><label>${esc(f.label)}（可选）</label>
+        <div class="gref" id="f-cf-${f.key}">
+          <span class="gref-path${gpath?"":" muted"}">${esc(gpath||"未关联")}</span>
+          <button class="btn ghost" type="button" id="gref-open-${f.key}">${gpath?"更换":"选择目标"}</button>
+          <span style="display:none"><span class="on" data-v="${attr(v)}"></span></span>
+        </div></div>`;
     }
     else if(f.type==="select") fields+=`<div class="field"><label>${esc(f.label)}</label><div class="seg" id="f-cf-${f.key}">${(f.options||[]).map(o=>`<div class="opt ${o===v?'on':''}" data-v="${attr(o)}" style="flex:0 0 auto;min-width:auto">${esc(o)}</div>`).join("")}</div></div>`;
     else if(f.type==="textarea") fields+=`<div class="field"><label>${esc(f.label)}</label><textarea id="f-cf-${f.key}" placeholder="${attr(f.placeholder||'')}">${esc(v)}</textarea></div>`;
     else if(f.type==="number") fields+=`<div class="field"><label>${esc(f.label)}</label><input id="f-cf-${f.key}" type="number" value="${attr(v)}" placeholder="${attr(f.placeholder||'')}"/></div>`;
     else fields+=`<div class="field"><label>${esc(f.label)}</label><input id="f-cf-${f.key}" value="${attr(v)}" placeholder="${attr(f.placeholder||'')}"/></div>`;
   });
-  // shared image URL field (all types except schedule)
-  if(m.type!=="schedule") fields+=`<div class="field"><label>图片 URL（可选）</label><input id="f-image" value="${attr(d.image||'')}" placeholder="https://..."/></div>`;
+  // 统一选图（本地压缩 / 网络地址高级入口 / 预览 / 清除）；隐藏槽沿用 #f-image，保存链路不变
+  if(m.type!=="schedule") fields+=`<div class="field"><label>图片（可选）</label>
+    <div class="imgpick">
+      <div class="imgpick-box"><img class="imgpick-img" alt="" hidden/><span class="imgpick-empty">未选择图片</span></div>
+      <div class="imgpick-bar">
+        <button class="btn ghost" type="button" data-act="local">从本地选择</button>
+        <button class="link-quiet" type="button" data-act="url">网络地址</button>
+        <button class="link-quiet" type="button" data-act="clear">清除</button>
+        <span class="imgpick-meta" style="margin-left:auto"></span>
+      </div>
+      <div class="imgpick-url" hidden><input type="text" placeholder="https://..."/><button class="btn ghost" type="button" data-act="apply">加载</button></div>
+      <input type="hidden" id="f-image" data-imgslot value="${attr(d.image||'')}"/>
+    </div></div>`;
   const overlay=document.createElement("div"); overlay.className="overlay";
   overlay.innerHTML=`<div class="modal"><h3>${editing?'编辑':'新建'} · ${m.name}</h3><div class="sub">${m.desc}</div>${fields}
     <div class="modal-actions">${editing?`<button class="link-danger" id="m-del">${(m.type==="todo"&&d.goalId&&!(opts&&opts.gsrc))?"移出今日计划":"删除"}</button>`:''}<div class="spacer"></div>
@@ -2918,24 +3100,35 @@ function openEditor(key,item,opts){
   overlay.onclick=e=>{ if(e.target===overlay) close(); };
   overlay.querySelector("#m-cancel").onclick=close;
   overlay.querySelectorAll(".seg").forEach(seg=>seg.querySelectorAll(".opt").forEach(o=>o.onclick=()=>{ seg.querySelectorAll(".opt").forEach(x=>x.classList.remove("on")); o.classList.add("on"); }));
-  /* 今日计划：先选方向 → 可关联目标按方向过滤（任意层级都能关联）；关联只写 goalId，不影响 sched（是否进今日计划） */
+  /* 统一选图组件：值写回隐藏槽 #f-image，保存时照旧读取 */
+  const imgHost=overlay.querySelector(".imgpick");
+  if(imgHost) mountImagePicker(imgHost, { value:d.image||"" });
+  /* 今日计划：表单里只留只读摘要，点「选择/更换」开独立弹窗；确定后写回隐藏槽，保存链路不变 */
   if(goalRef){
-    const dirSeg=overlay.querySelector("#f-cf-direction");
-    const weekSeg=overlay.querySelector("#f-cf-"+goalRef.key);
-    const bindSeg=seg=>seg.querySelectorAll(".opt").forEach(o=>o.onclick=()=>{
-      seg.querySelectorAll(".opt").forEach(x=>x.classList.remove("on")); o.classList.add("on"); });
-    const renderWeeks=(dirId,sel)=>{
-      const list=goalRef.allWeeks.filter(o=>!dirId||String(o.dirId)===String(dirId));
-      weekSeg.innerHTML=`<div class="opt ${sel?'':'on'}" data-v="" style="flex:0 0 auto;min-width:auto">不关联</div>`+
-        (list.length?list.map(o=>`<div class="opt ${String(o.id)===String(sel)?'on':''}" data-v="${o.id}" title="${attr(o.label)}" style="flex:0 0 auto;min-width:auto">${esc(dirId?o.short:o.label)}</div>`).join("")
-          :`<span style="font-size:12px;color:var(--text-tertiary);align-self:center">该方向下还没有可关联的目标</span>`);
-      bindSeg(weekSeg);
+    const host=overlay.querySelector("#f-cf-"+goalRef.key);
+    const slot=host.querySelector(".on"), p=host.querySelector(".gref-path"), btn=host.querySelector("#gref-open-"+goalRef.key);
+    const paint=id=>{
+      const path=id?goalPathOf(id):"";
+      slot.dataset.v=id?String(id):"";                       // seg() 仍从 .on + data-v 取值
+      p.textContent=path||"未关联"; p.classList.toggle("muted",!path);
+      btn.textContent=path?"更换":"选择目标";
     };
-    renderWeeks(goalRef.curDir, goalRef.curV);
-    if(dirSeg){
-      bindSeg(dirSeg);
-      dirSeg.querySelectorAll(".opt").forEach(o=>o.addEventListener("click",()=>renderWeeks(o.dataset.v,"")));
-    }
+    btn.onclick=()=>openGoalPicker({
+      items:goalRef.allWeeks, value:slot.dataset.v, title:"选择关联目标",
+      sub:"选中后点「确定」回填；保存任务后才生效", placeholder:"搜索目标…",
+      emptyText:"还没有可关联的目标，先去「目标拆解」建一个",
+      onConfirm:paint,
+      /* 「取消」兼作解绑：编辑已有目标关联的记录时，取消即清空并保存，可撤销；新建时只清暂选 */
+      onCancel:()=>{
+        const prev=String(slot.dataset.v||"");
+        if(!prev) return;                            // 本来未关联：取消只是关闭
+        d.goalId="";
+        paint("");
+        if(!editing) return;                         // 新建：只退回未关联，不写存储、不弹撤销
+        if(!persist()) return;
+        toastUndo("已取消关联目标",()=>{ d.goalId=prev; if(overlay.isConnected) paint(prev); persist(); },"已恢复目标关联");
+      }
+    });
   }
   /* 今日计划：循环规则（单条记录，打卡写入 doneOn，不生成每日副本） */
   if(m.type==="todo"&&rep){
@@ -2980,6 +3173,7 @@ function openEditor(key,item,opts){
       if(opts&&opts.dpop) openDayPopover(opts.dpop); return; }
     confirmDelete(key,d.id, (opts&&opts.dpop)?()=>openDayPopover(opts.dpop):null); };
   overlay.querySelector("#m-save").onclick=()=>{
+    if(!overlay.isConnected) return;   // 防连点：保存后弹窗已移除，忽略后续点击
     const val=id=>{ const el=overlay.querySelector(id); return el?el.value:undefined; };
     const seg=id=>{ const el=overlay.querySelector(id+" .on"); return el?el.dataset.v:undefined; };
     const rawTitle=(val("#f-title")||"").trim();
@@ -3062,14 +3256,14 @@ function confirmDelete(key,id,after){ const item=(data[key]||[]).find(i=>i.id==i
 function toast(msg){ const el=document.createElement("div"); el.className="toast"; el.textContent=msg;
   document.body.appendChild(el); setTimeout(()=>el.remove(),2400); }
 /* 带一次撤销机会的提示（刷新即失效） */
-function toastUndo(msg,onUndo){
+function toastUndo(msg,onUndo,undoMsg){
   const el=document.createElement("div"); el.className="toast";
   el.innerHTML=`<span>${esc(msg)}</span><button id="toast-undo" style="margin-left:10px;background:transparent;border:1px solid currentColor;color:inherit;border-radius:8px;padding:2px 8px;font:inherit;cursor:pointer">撤销</button>`;
   document.body.appendChild(el);
   const timer=setTimeout(()=>el.remove(),8000);
   let fired=false;
   el.querySelector("#toast-undo").onclick=()=>{ if(fired) return; fired=true;
-    clearTimeout(timer); el.remove(); onUndo(); toast("已撤销层级调整"); };
+    clearTimeout(timer); el.remove(); onUndo(); toast(undoMsg||"已撤销层级调整"); };
 }
 function askConfirm(title,sub,okLabel,onOk){
   const overlay=document.createElement("div"); overlay.className="overlay";
@@ -3158,8 +3352,23 @@ function savePreImportSnapshot(){
   try{ downloadJSON(payload, `导入前快照-${isoToday()}-${pad2(now.getHours())}${pad2(now.getMinutes())}${pad2(now.getSeconds())}.json`); downloaded=true; }catch(e){}
   return { stored, downloaded };
 }
+/* 手动导出与每日自动备份共用同一份数据结构 */
+function backupPayload(){
+  return { app:"personal-workbench", version:BACKUP_VERSION, exportedAt:new Date().toISOString(), data:workBucketData() };
+}
+/* 每日自动备份：启动时调用一次，写文件由 Rust 命令完成；浏览器预览直接跳过 */
+function autoDailyBackup(){
+  const core=window.__TAURI__&&window.__TAURI__.core;
+  if(!core||typeof core.invoke!=="function") return;
+  core.invoke("daily_backup",{ content:JSON.stringify(backupPayload(),null,2), date:isoToday() })
+    .then(r=>{
+      if(r&&r.failed&&r.failed.length) toast("自动备份已完成，但清理失败："+r.failed.join("、"));
+      else if(r&&r.removed&&r.removed.length) console.info("[backup] 已清理", r.removed);
+    })
+    .catch(err=>toast("自动备份失败 · "+(err&&err.message?err.message:err)));
+}
 function exportData(){
-  const payload={ app:"personal-workbench", version:BACKUP_VERSION, exportedAt:new Date().toISOString(), data:workBucketData() };
+  const payload=backupPayload();
   const name=`工作台备份-${isoToday()}.json`;
   // Tauri 环境：弹系统「另存为」选路径；浏览器环境：保持 blob 下载
   const core=window.__TAURI__&&window.__TAURI__.core;
@@ -3609,7 +3818,7 @@ function openGoalEditor(node, parent){
   const d=node||{ lv:lvKey, title:"", stage:"", week:"", deadline:"", children:[] };
   let mode=d.pMode||"auto";
   const pickable=!editing&&!!parent;   // 有父节点时才让选层级；新建方向固定顶层
-  let moveLv=null, moveDepth=null, moveParentId=null, moveCandidates=[], movePending=false;
+  let moveLv=null, moveDepth=null, moveParentId=null, moveCandidates=[], movePending=false, moveEmptyKey=null;
   const curDepth=editing?goalDepthOf(d):0;
   const overlay=document.createElement("div"); overlay.className="overlay";
   overlay.innerHTML=`<div class="modal" style="width:460px"><h3 id="f-gh">${editing?'编辑':'新建'} · ${GOAL_LV[lvKey].name}</h3>
@@ -3652,24 +3861,42 @@ function openGoalEditor(node, parent){
   const moveHint=t=>{ const h=overlay.querySelector("#f-gmhint"); if(h) h.textContent=t; };
   const renderMoveParents=()=>{
     const wrap=overlay.querySelector("#f-gmparent"); if(!wrap) return;
-    if(!movePending){ wrap.innerHTML=""; moveHint(`当前：${GOAL_LV[lvKey].name}。选择目标层级可调整。`); return; }
+    const lvOf=dep=>GOAL_LEVELS[Math.min(dep,GOAL_LEVELS.length-1)];
+    if(!movePending){
+      wrap.innerHTML=moveEmptyKey?`<div class="gmp-empty">当前没有可作为父节点的「${esc(moveEmptyKey)}」<br/>已保持原层级，可直接保存</div>`:"";
+      moveHint(moveEmptyKey?`没有可选的「${moveEmptyKey}」，已保持原层级。`:`当前：${GOAL_LV[lvKey].name}。选择目标层级可调整。`);
+      return;
+    }
     if(moveDepth<=0){ wrap.innerHTML=""; moveHint(`保存后移到顶层，成为「${GOAL_LV[moveLv].name}」。`); return; }
+    const par=moveParentId?goalFind(moveParentId):null;
     if(!moveCandidates.length){
-      const par=moveParentId?goalFind(moveParentId):null;
-      wrap.innerHTML="";
+      const pl=lvOf(moveDepth-1);
+      wrap.innerHTML=par
+        ? `<div class="gmp-auto"><span class="glv" style="color:${pl.color};background:${pl.tint}">${pl.name}</span><span>保存后自动挂到「${esc(par.title)}」</span></div>`
+        : `<div class="gmp-empty">当前没有可作为父节点的「${GOAL_LEVELS[moveDepth-1].name}」<br/>保持原层级，可直接保存</div>`;
       moveHint(par?`保存后自动挂到「${par.title}」，成为「${GOAL_LV[moveLv].name}」。`:`保存后移到顶层，成为「${GOAL_LV[moveLv].name}」。`);
       return;
     }
+    /* 合法候选 + 同层已归档项（禁用展示，不可选），统一进「选择新的父节点」弹窗 */
+    const rows=moveCandidates.concat(
+      goalMoveCandidates(d,moveDepth,goalSubtreeIds(d),true).filter(c=>c.archived).map(c=>({ ...c, disabled:"已归档" })));
+    const ppath=moveParentId?goalPathOf(moveParentId):"";
     wrap.innerHTML=`<div class="field"><label>选择新的父节点（${GOAL_LEVELS[moveDepth-1].name}）</label>
-      <select id="f-gmparent-sel"><option value="">请选择父节点…</option>${moveCandidates.map(c=>`<option value="${c.id}">${esc(c.label)}</option>`).join("")}</select></div>`;
-    wrap.querySelector("#f-gmparent-sel").onchange=e=>{ moveParentId=e.target.value?String(e.target.value):null; };
+      <div class="gref"><span class="gref-path${ppath?"":" muted"}">${esc(ppath||"未选择")}</span>
+      <button class="btn ghost" type="button" id="f-gmpick">${ppath?"更换":"选择"}</button></div></div>`;
+    wrap.querySelector("#f-gmpick").onclick=()=>openGoalPicker({
+      items:rows, value:moveParentId, title:"选择新的父节点",
+      sub:`保存后移到「${GOAL_LV[moveLv].name}」`, placeholder:"搜索父节点…", noneText:"未选择",
+      emptyText:"没有匹配的父节点",
+      onConfirm:id=>{ moveParentId=id||null; renderMoveParents(); }
+    });
     moveHint(`保存后移到「${GOAL_LV[moveLv].name}」，父节点由你选择。`);
   };
   if(editing){
     overlay.querySelectorAll("#f-gmlv .opt").forEach(o=>o.onclick=()=>{
       const k=o.dataset.mlv;
       overlay.querySelectorAll("#f-gmlv .opt").forEach(x=>x.classList.toggle("on",x.dataset.mlv===k));
-      moveParentId=null; moveCandidates=[]; movePending=false;
+      moveParentId=null; moveCandidates=[]; movePending=false; moveEmptyKey=null;
       if(k===d.lv){ moveLv=null; moveDepth=null; renderMoveParents(); return; }
       const td=GOAL_LEVELS.findIndex(l=>l.key===k);
       if(td<curDepth){                                  // 升级：自动挂最近的合法祖先（不跳级）
@@ -3684,7 +3911,7 @@ function openGoalEditor(node, parent){
       if(td===curDepth){ moveLv=null; moveDepth=null; renderMoveParents(); return; }
       let dd=td;                                         // 降级：必须由用户选择父节点
       while(dd>curDepth){ const c=goalMoveCandidates(d,dd,goalSubtreeIds(d)); if(c.length){ moveCandidates=c; break; } dd--; }
-      if(!moveCandidates.length){ moveLv=null; moveDepth=null;
+      if(!moveCandidates.length){ moveLv=null; moveDepth=null; moveEmptyKey=GOAL_LEVELS[td-1].name;
         toast(`当前没有可作为父节点的「${GOAL_LEVELS[td-1].name}」，保持原层级`); renderMoveParents(); return; }
       moveDepth=dd; moveLv=GOAL_LEVELS[dd].key; movePending=true; renderMoveParents();
     });
@@ -4010,6 +4237,135 @@ function buildNav(){
 }
 function renderNavActive(){ $("#nav").querySelectorAll(".navi").forEach(el=>el.classList.toggle("active", el.dataset.go===view)); }
 
+/* ---------- 统一选图：本地读取 + Canvas 压缩（长边≤1280 / JPEG 0.72 / ≤200KB） ---------- */
+const IMG_LIMIT = 10*1024*1024;     // 原文件上限，超过直接拒收
+const IMG_EDGE  = 1280;             // 压缩后长边上限
+const IMG_Q     = 0.72;             // JPEG 质量
+const IMG_TARGET= 200*1024;         // 压缩后目标体积
+/* 加载失败占位（内联 SVG，不依赖网络） */
+const IMG_PH = "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(
+  `<svg xmlns="http://www.w3.org/2000/svg" width="160" height="120"><rect width="160" height="120" fill="#EFEEE9"/><path d="M44 82l22-26 15 17 11-13 24 22z" fill="#CBC9C1"/><circle cx="110" cy="40" r="10" fill="#CBC9C1"/></svg>`);
+
+/* 读取本地图片：打包后优先走 Tauri 文件对话框；浏览器预览 / 命令不可用时回退 input[type=file]。
+   返回 Promise<null | {dataUrl} | {error}> */
+function pickLocalImage(){
+  return new Promise(resolve=>{
+    const core = window.__TAURI__ && window.__TAURI__.core;
+    const fallback = () => {
+      const inp=document.createElement("input");
+      inp.type="file"; inp.accept="image/*"; inp.style.display="none";
+      const done=v=>{ inp.remove(); resolve(v); };
+      inp.onchange=()=>{
+        const f=inp.files && inp.files[0];
+        if(!f) return done(null);
+        if(f.size>IMG_LIMIT) return done({error:"图片超过 10MB，未导入"});
+        const fr=new FileReader();
+        fr.onload=()=>done({dataUrl:String(fr.result)});
+        fr.onerror=()=>done({error:"读取图片失败"});
+        fr.readAsDataURL(f);
+      };
+      document.body.appendChild(inp);
+      inp.click();
+    };
+    if(!core || typeof core.invoke!=="function") return fallback();
+    core.invoke("pick_image_file").then(r=>{
+      if(!r || r.canceled) return resolve(null);
+      if(r.tooLarge) return resolve({error:"图片超过 10MB，未导入"});
+      if(r.dataUrl) return resolve({dataUrl:String(r.dataUrl)});
+      resolve({error:r.error||"读取图片失败"});
+    }).catch(fallback);   // 旧包未注册该命令时回退
+  });
+}
+
+/* Canvas 压缩：先按长边等比缩放，再降质量（最低 0.4）→ 仍超就继续缩边长 */
+function compressImage(src, opts){
+  const o=Object.assign({maxEdge:IMG_EDGE, quality:IMG_Q, maxBytes:IMG_TARGET}, opts||{});
+  return new Promise((resolve,reject)=>{
+    const img=new Image();
+    img.onload=()=>{
+      try{
+        const nw=img.naturalWidth||0, nh=img.naturalHeight||0;
+        if(!nw||!nh) return reject(new Error("图片无法解码"));
+        const k=Math.min(1, o.maxEdge/Math.max(nw,nh));
+        let cw=Math.max(1,Math.round(nw*k)), ch=Math.max(1,Math.round(nh*k));
+        const render=()=>{
+          const cv=document.createElement("canvas"); cv.width=cw; cv.height=ch;
+          const c=cv.getContext("2d");
+          c.fillStyle="#fff"; c.fillRect(0,0,cw,ch);     // 透明 PNG 转 JPEG 时铺白底
+          c.drawImage(img,0,0,cw,ch);
+          return cv;
+        };
+        let q=o.quality, url=render().toDataURL("image/jpeg", q), guard=0;
+        while(url.length*0.75>o.maxBytes && guard++<12){
+          if(q>0.4) q=Math.max(0.4, q-0.08);
+          else { cw=Math.max(1,Math.round(cw*0.85)); ch=Math.max(1,Math.round(ch*0.85)); }
+          url=render().toDataURL("image/jpeg", q);
+        }
+        resolve(url);
+      }catch(err){ reject(err); }
+    };
+    img.onerror=()=>reject(new Error("图片无法解码"));
+    img.src=src;
+  });
+}
+
+/* base64 体积估算（粗略，用于展示与上限判断） */
+function imgBytes(url){
+  if(!url || !/^data:/i.test(url)) return 0;
+  const i=url.indexOf(","); if(i<0) return 0;
+  return Math.max(0, Math.round((url.length-i-1)*0.75));
+}
+
+/* 统一选图组件：host 内约定 .imgpick-img / .imgpick-empty / .imgpick-box / [data-imgslot] / .imgpick-url
+   opts: { value, onChange } */
+function mountImagePicker(host, opts){
+  const o=Object.assign({value:"", onChange:null}, opts||{});
+  const img=host.querySelector(".imgpick-img");
+  const empty=host.querySelector(".imgpick-empty");
+  const box=host.querySelector(".imgpick-box");
+  const slot=host.querySelector("[data-imgslot]");
+  const meta=host.querySelector(".imgpick-meta");
+  const urlBox=host.querySelector(".imgpick-url");
+  const urlInput=urlBox && urlBox.querySelector("input");
+  let val=o.value||"";
+  const paint=()=>{
+    if(slot) slot.value=val;
+    if(val){
+      img.onerror=()=>{ img.onerror=null; img.src=IMG_PH; };   // 网络图失效 → 占位，不显示破图
+      img.src=val; img.hidden=false; if(empty) empty.hidden=true; box.classList.add("has-img");
+    } else {
+      img.removeAttribute("src"); img.hidden=true; if(empty) empty.hidden=false; box.classList.remove("has-img");
+    }
+    if(meta) meta.textContent = !val ? "" : (/^https?:/i.test(val) ? "网络图片" : `约 ${Math.max(1,Math.round(imgBytes(val)/1024))} KB`);
+    if(o.onChange) o.onChange(val);
+  };
+  host.querySelector('[data-act="local"]').onclick=()=>{
+    pickLocalImage().then(res=>{
+      if(!res) return;                              // 用户取消
+      if(res.error){ toast(res.error); return; }
+      compressImage(res.dataUrl)
+        .then(out=>{ val=out; paint(); })
+        .catch(e=>toast("图片处理失败："+(e&&e.message||e)));
+    });
+  };
+  host.querySelector('[data-act="clear"]').onclick=()=>{ val=""; paint(); if(urlInput) urlInput.value=""; };
+  if(urlBox && urlInput){
+    host.querySelector('[data-act="url"]').onclick=()=>{
+      urlBox.hidden=!urlBox.hidden;
+      if(!urlBox.hidden){ urlInput.value=/^https?:/i.test(val)?val:""; urlInput.focus(); }
+    };
+    const apply=()=>{
+      const v=urlInput.value.trim();
+      if(!v) return;
+      if(!/^https?:\/\//i.test(v)){ toast("网络地址要以 http:// 或 https:// 开头"); return; }
+      val=v; paint(); urlBox.hidden=true;
+    };
+    host.querySelector('[data-act="apply"]').onclick=apply;
+    urlInput.onkeydown=e=>{ if(e.key==="Enter"){ e.preventDefault(); apply(); } };
+  }
+  paint();
+}
+
 /* ---------- avatar upload ---------- */
 $("#avaCam").innerHTML = icon("camera",18);
 $("#brandPen").innerHTML = icon("pen",14,2);
@@ -4017,15 +4373,15 @@ $("#brandEdit").onclick = () => openProfile();   // 点左上角的称呼即可�
 function setAvatar(src){ if(!src) return; $("#avaImg").src=src; $("#avaImg").style.display="block"; $("#avaIni").style.display="none"; }
 if(data.__avatar) setAvatar(data.__avatar);
 else $("#avaIni").textContent = (ownerName()||"我").slice(0,1);   // 没换头像就显示称呼首字
-$("#ava").onclick = () => $("#avatarInput").click();
-$("#avatarInput").onchange = e => {
-  const f = e.target.files && e.target.files[0];
-  if(!f) return;
-  const reader = new FileReader();
-  reader.onload = () => openAvatarCropper(reader.result);   // 选完先进裁剪框
-  reader.readAsDataURL(f);
-  e.target.value = "";
-};
+/* 头像与记录图共用同一套本地选图；选完仍进裁剪框，输出 192×192 不变 */
+function chooseAvatar(){
+  pickLocalImage().then(res=>{
+    if(!res) return;
+    if(res.error){ toast(res.error); return; }
+    openAvatarCropper(res.dataUrl);
+  });
+}
+$("#ava").onclick = chooseAvatar;
 
 /* ---------- 头像裁剪：方框内拖动定位 + 缩放，确认后存 192×192 小图 ---------- */
 function openAvatarCropper(src){
@@ -4064,7 +4420,7 @@ function openAvatarCropper(src){
       c2.fillStyle="#fff"; c2.fillRect(0,0,192,192); c2.drawImage(out,0,0);
       url=o2.toDataURL("image/jpeg",0.85);
     }
-    data.__avatar=url; setAvatar(url); store.save(); overlay.remove(); toast("头像已更新");
+    data.__avatar=url; setAvatar(url); if(store.save()){ overlay.remove(); toast("头像已更新"); }
   };
 }
 
@@ -4089,16 +4445,16 @@ function openProfile(){
   const close=()=>overlay.remove();
   overlay.onclick=e=>{ if(e.target===overlay) close(); };
   overlay.querySelector("#pf-cancel").onclick=close;
-  overlay.querySelector("#pf-ava").onclick=()=>{ close(); $("#avatarInput").click(); };
+  overlay.querySelector("#pf-ava").onclick=()=>{ close(); chooseAvatar(); };
   overlay.querySelector("#pf-save").onclick=()=>{
     const name=overlay.querySelector("#pf-name").value.trim();
     const slg=overlay.querySelector("#pf-slogan").value.trim();
     data.__owner=name;      // 留空 = 用回默认称呼
     data.__slogan=slg;
-    store.save();
+    const ok=store.save();
     if(!data.__avatar) $("#avaIni").textContent=(ownerName()||"我").slice(0,1);
     buildNav(); render();
-    close(); toast("已保存");
+    if(ok){ close(); toast("已保存"); }
   };
   setTimeout(()=>{ const el=overlay.querySelector("#pf-name"); if(el) el.focus(); },30);
 }
@@ -4120,6 +4476,7 @@ $("#btnSync").onclick = openSync;
 buildNav();
 render();
 eyeEnsureTimer();   // 护眼专注的秒表常驻，切到别的板块也在走
+autoDailyBackup();  // 每天首次启动写一份快照（仅 Tauri 环境）
 
 /* ---------- 窗口级拖放防护：拦截文件拖入 WebView 触发的页面导航（模块内部元素拖拽不受影响） ---------- */
 ["dragover","drop"].forEach(ev=>document.addEventListener(ev,e=>e.preventDefault()));
